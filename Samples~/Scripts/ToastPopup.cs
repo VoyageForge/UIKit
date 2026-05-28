@@ -13,8 +13,7 @@ namespace VoyageForge.UIKit.Samples
     public class ToastPopup : PopupPanel
     {
         [SerializeField] private Text _messageText;
-        [SerializeField] private float _duration = 2f;
-
+      
 
         private CancellationTokenSource _cancellationTokenSource; // 任务的生命周期管理者
         private CanvasGroup _canvasGroup;
@@ -45,7 +44,7 @@ namespace VoyageForge.UIKit.Samples
 
         private async UniTask AutoHide(CancellationToken token)
         {
-            await UniTask.Delay(1000, cancellationToken: token);
+            await UniTask.Delay( 2000, cancellationToken: token);
             await HideSelfAsync();
         }
 
