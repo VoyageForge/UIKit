@@ -28,7 +28,6 @@ namespace VoyageForge.UIKit.Runtime
         private protected PanelState _state = PanelState.Inactive;
 
         public PanelState State => _state;
-        public string PanelKey { get; set; }
 
         // ---- Internal API ----
 

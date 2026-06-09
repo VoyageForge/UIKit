@@ -6,7 +6,8 @@ using VoyageForge.UIKit.Runtime;
 namespace VoyageForge.UIKit.Samples
 {
     /// <summary> 主菜单面板 — FullPanel，可压栈导航。 </summary>
-    public class MainPanel : FullPanel
+    [PanelPath("MainPanel")]
+    public  class MainPanel : FullPanel
     {
         private Button _settingsButton;
         private Button _dialogButton;
@@ -20,11 +21,11 @@ namespace VoyageForge.UIKit.Samples
 
             if (_settingsButton != null)
                 _settingsButton.onClick.AddListener(() =>
-                    UIManager.Instance.Show("SettingsPanel"));
+                    UIManager.Instance.Show<SettingsPanel>());
 
             if (_dialogButton != null)
                 _dialogButton.onClick.AddListener(() =>
-                    UIManager.Instance.Show("ConfirmDialog"));
+                    UIManager.Instance.Show<ConfirmDialog>());
 
            
             

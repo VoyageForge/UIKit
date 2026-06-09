@@ -18,7 +18,7 @@ namespace VoyageForge.UIKit.Runtime
         /// </summary>
         public async UniTask ShowSelfAsync()
         {
-            await UIManager.Instance.PopupManager.ShowAsync(this.PanelKey, this);
+            await UIManager.Instance.PopupManager.ShowAsync(this);
         }
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace VoyageForge.UIKit.Runtime
         /// </summary>
         public async UniTask CloseSelfAsync()
         {
-            await UIManager.Instance.PopupManager.CloseAsync(this.PanelKey, this);
+            await UIManager.Instance.PopupManager.CloseAsync(this);
         }
 
         /// <summary>
@@ -44,7 +44,7 @@ namespace VoyageForge.UIKit.Runtime
         /// </summary>
         public async UniTask HideSelfAsync()
         {
-            await UIManager.Instance.PopupManager.HideAsync(this.PanelKey, this);
+            await UIManager.Instance.PopupManager.HideAsync(this);
         }
     }
 }

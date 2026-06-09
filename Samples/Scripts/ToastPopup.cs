@@ -10,10 +10,11 @@ namespace VoyageForge.UIKit.Samples
     /// 示例 Toast 弹窗 — 继承 PopupPanel，不进栈，仅浮动显示。
     /// </summary>
     [RequireComponent(typeof(CanvasGroup))]
+    [PanelPath("ToastPopup")]
     public class ToastPopup : PopupPanel
     {
         [SerializeField] private Text _messageText;
-      
+
 
         private CancellationTokenSource _cancellationTokenSource; // 任务的生命周期管理者
         private CanvasGroup _canvasGroup;
@@ -44,7 +45,7 @@ namespace VoyageForge.UIKit.Samples
 
         private async UniTask AutoHide(CancellationToken token)
         {
-            await UniTask.Delay( 2000, cancellationToken: token);
+            await UniTask.Delay(2000, cancellationToken: token);
             await HideSelfAsync();
         }
 

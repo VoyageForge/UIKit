@@ -1,258 +1,113 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace VoyageForge.UIKit.Runtime
 {
-    /// <summary>
-    /// 默认 PopupManager。
-    /// </summary>
     public class PopupManager : IPopupManager
     {
-        /// <summary>
-        /// 当前激活 Popup。
-        /// 
-        /// key:
-        ///     PanelKey
-        /// 
-        /// value:
-        ///     Popup实例
-        /// </summary>
-        private readonly Dictionary<string, PopupPanel> _active = new();
-
-        /// <summary>
-        /// Popup Provider。
-        /// </summary>
+        private readonly Dictionary<Type, PopupPanel> _active = new();
+        
         private IPopupProvider _provider = new PopupResourcesProvider();
 
-        /// <summary>
-        /// 当前 Provider。
-        /// 
-        /// 支持运行时热切换。
-        /// </summary>
         public IPopupProvider Provider
         {
             get => _provider;
             set
             {
-                if (value == null)
-                    return;
-
-                // 迁移缓存
-                if (_provider != null)
-                {
-                    value.Import(_provider.Export());
-                }
-
+                if (value == null) return;
+                MigrateCache(_provider, value);
                 _provider = value;
-
-                // 重新挂载 Popup Root
-                foreach (var panel in _active.Values)
-                {
-                    if (panel == null)
-                        continue;
-
-                    panel.transform.SetParent(
-                        _provider.Root,
-                        false);
-                }
+                ReparentAll();
             }
         }
 
-        /// <summary>
-        /// 显示 Popup。
-        /// 
-        /// Provider 自动加载。
-        /// </summary>
-        public async UniTask<T> ShowAsync<T>(string key)
-            where T : PopupPanel
+        private static void MigrateCache(IPopupProvider from, IPopupProvider to)
         {
-            PopupPanel panel;
+            if (from != null) to.Import(from.Export());
+        }
 
-            // 已激活
-            if (_active.TryGetValue(key, out panel))
+        private void ReparentAll()
+        {
+            foreach (var panel in _active.Values)
+                if (panel != null)
+                    panel.transform.SetParent(_provider.Root, false);
+        }
+
+        // ---- Show ----
+
+        public async UniTask<T> ShowAsync<T>() where T : PopupPanel
+        {
+            var panel = _provider.Load<T>();
+            if (panel == null) return null;
+            return await ShowInternal(panel);
+        }
+
+        public UniTask ShowAsync(PopupPanel panel) => ShowInternal(panel);
+
+        private async UniTask<T> ShowInternal<T>(T panel) where T : PopupPanel
+        {
+            if (panel == null) return null;
+            var type = panel.GetType();
+
+            if (_active.TryGetValue(type, out var existing) && existing == panel)
             {
-                await panel.Show();
-                return panel as T;
+                await existing.Show();
+                return panel;
             }
 
-            // Provider 加载
-            panel = _provider.Load(key) as PopupPanel;
-
-            if (panel == null)
-            {
-                Debug.LogError($"[PopupManager] Popup not found : {key}");
-                return null;
-            }
-
-            panel.PanelKey = key;
-
-            // 挂载 Root
-            panel.transform.SetParent(
-                _provider.Root,
-                false);
-
-            // 激活记录
-            _active[key] = panel;
-
+            panel.transform.SetParent(_provider.Root, false);
+            _active[type] = panel;
             await panel.Show();
-
-            return panel as T;
+            return panel;
         }
 
-        /// <summary>
-        /// 显示已有 Popup。
-        /// 
-        /// 支持：
-        /// - Scene Popup
-        /// - Runtime实例
-        /// - Prefab Asset（自动Instantiate）
-        /// </summary>
-        public async UniTask ShowAsync(
-            string key,
-            PopupPanel popupPanel)
+        // ---- Hide ----
+
+        public async UniTask HideAsync<T>() where T : PopupPanel
         {
-            if (popupPanel == null)
-                return;
-
-            // 已激活
-            if (_active.TryGetValue(key, out var active))
+            if (_active.Remove(typeof(T), out var panel))
             {
-                if (active == popupPanel)
-                {
-                    await active.Show();
-                    return;
-                }
+                await panel.Hide();
+                _provider.Release(panel);
             }
-
-            // Prefab Asset
-            if (!popupPanel.gameObject.scene.IsValid())
-            {
-                popupPanel = Object.Instantiate(popupPanel);
-            }
-
-            popupPanel.PanelKey = key;
-
-            // 挂载 Root
-            popupPanel.transform.SetParent(
-                _provider.Root,
-                false);
-
-            // 激活记录
-            _active[key] = popupPanel;
-
-            await popupPanel.Show();
         }
 
-        /// <summary>
-        /// 隐藏 Popup。
-        /// </summary>
-        public async UniTask HideAsync(string key)
+        public async UniTask HideAsync(PopupPanel panel)
         {
-            if (!_active.Remove(key, out var panel))
-                return;
+            if (panel == null) return;
+            var type = panel.GetType();
+
+            if (_active.TryGetValue(type, out var active) && active == panel)
+                _active.Remove(type);
 
             await panel.Hide();
-            
-
             _provider.Release(panel);
         }
-        
-        
 
-        /// <summary>
-        /// 隐藏指定 Popup。
-        /// </summary>
-        public async UniTask HideAsync(
-            string key,
-            PopupPanel popupPanel)
+        // ---- Close ----
+
+        public async UniTask CloseAsync<T>() where T : PopupPanel
         {
-            if (popupPanel == null)
-                return;
-
-            // 当前激活的是该对象
-            if (_active.TryGetValue(key, out var active))
-            {
-                if (active == popupPanel)
-                {
-                    await active.Hide();
-                    
-                    _active.Remove(key);
-
-                    _provider.Release(active);
-
-                    return;
-                }
-            }
-
-            // 独立对象
-            await popupPanel.Hide();
-
-            _provider.Release(popupPanel);
+            if (_active.Remove(typeof(T), out var panel))
+                await panel.Close();
         }
 
-        
-        
-        /// <summary>
-        /// 关闭 Popup。
-        /// </summary>
-        public async UniTask CloseAsync(string key)
+        public async UniTask CloseAsync(PopupPanel panel)
         {
-            if (!_active.Remove(key, out var panel))
-                return;
+            if (panel == null) return;
+            var type = panel.GetType();
+
+            if (_active.TryGetValue(type, out var active) && active == panel)
+                _active.Remove(type);
 
             await panel.Close();
-
         }
 
-        /// <summary>
-        /// 关闭指定 Popup。
-        /// </summary>
-        public async UniTask CloseAsync(
-            string key,
-            PopupPanel popupPanel)
-        {
-            if (popupPanel == null)
-                return;
+        public bool IsShowing<T>() where T : PopupPanel =>
+            _active.TryGetValue(typeof(T), out var p) && p.State == BasePanel.PanelState.Active;
 
-            // 当前激活的是该对象
-            if (_active.TryGetValue(key, out var active))
-            {
-                if (active == popupPanel)
-                {
-                    _active.Remove(key);
-
-                    await active.Close();
-
-                    _provider.Release(active);
-
-                    return;
-                }
-            }
-
-            // 独立对象
-            await popupPanel.Close();
-
-        }
-
-        /// <summary>
-        /// 是否正在显示。
-        /// </summary>
-        public bool IsShowing(string key)
-        {
-            return _active.TryGetValue(key, out var panel)
-                   && panel.State == BasePanel.PanelState.Active;
-        }
-
-        /// <summary>
-        /// Dispose。
-        /// </summary>
-        public void Dispose()
-        {
-            _active.Clear();
-        }
-
-       
+        public void Dispose() => _active.Clear();
     }
 }

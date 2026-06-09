@@ -1,110 +1,46 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace VoyageForge.UIKit.Runtime
 {
     /// <summary>
-    /// Panel 提供器。
-    /// 
-    /// 负责：
-    /// - Panel 加载
-    /// - Panel 缓存
-    /// - Panel 回收
-    /// 
-    /// 不负责：
-    /// - UI 层级
-    /// - Canvas
-    /// - 生命周期
-    /// - Stack
+    /// Panel 提供器 — 以 Type 为 key 管理面板实例。
     /// </summary>
-    public interface IPanelProvider 
+    public interface IPanelProvider
     {
-        /// <summary>
-        /// 当前缓存。
-        /// 只读暴露，避免外部直接修改内部状态。
-        /// </summary>
-        IReadOnlyDictionary<string, BasePanel> Cache { get; }
+        IReadOnlyDictionary<Type, BasePanel> Cache { get; }
 
-        /// <summary>
-        /// 加载 Panel。
-        /// 
-        /// 如果缓存存在：
-        ///     返回缓存。
-        /// 
-        /// 如果缓存不存在：
-        ///     创建并缓存。
-        /// </summary>
-        BasePanel Load(string key);
+        /// <summary> 加载 Panel（缓存命中直接返回，否则创建）。 </summary>
+        T Load<T>() where T : BasePanel;
 
-        /// <summary>
-        /// 回收 Panel。
-        /// 
-        /// Provider 自己决定：
-        /// - Disable
-        /// - Pool
-        /// - Destroy
-        /// </summary>
+        /// <summary> 回收 Panel。 </summary>
         void Release(BasePanel panel);
 
-        /// <summary>
-        /// 注册已有 Panel。
-        /// 
-        /// 主要用于：
-        /// - SceneUI
-        /// - 预放置 UI
-        /// </summary>
-        void Register(string key, BasePanel panel);
+        /// <summary> 注册已有 Panel 实例（key = panel.GetType()）。 </summary>
+        void Register(BasePanel panel);
 
-        /// <summary>
-        /// 尝试获取缓存中的 Panel。
-        /// </summary>
-        bool TryGet(string key, out BasePanel panel);
+        /// <summary> 尝试获取缓存。 </summary>
+        bool TryGet(Type type, out BasePanel panel);
 
-        /// <summary>
-        /// 从缓存移除。
-        /// 不负责 Destroy。
-        /// </summary>
-        void Remove(string key);
+        /// <summary> 从缓存移除（不 Destroy）。 </summary>
+        void Remove(Type type);
 
-        /// <summary>
-        /// 清空缓存。
-        /// 不负责 Destroy。
-        /// </summary>
+        /// <summary> 清空缓存（不 Destroy）。 </summary>
         void Clear();
 
-        /// <summary>
-        /// 导入缓存。
-        /// 
-        /// 用于：
-        /// Provider 热切换。
-        /// </summary>
-        void Import(Dictionary<string, BasePanel> panels)
+        /// <summary> 导入缓存（Provider 热切换用）。 </summary>
+        void Import(Dictionary<Type, BasePanel> panels)
         {
-            foreach (var kv in panels)
-            {
-                Register(kv.Key, kv.Value);
-            }
+            foreach (var kv in panels) Register(kv.Value);
         }
 
-        /// <summary>
-        /// 导出缓存。
-        /// 
-        /// 导出后会自动清空当前 Provider。
-        /// 
-        /// 用于：
-        /// Provider 热切换。
-        /// </summary>
-        Dictionary<string, BasePanel> Export()
+        /// <summary> 导出并清空缓存（Provider 热切换用）。 </summary>
+        Dictionary<Type, BasePanel> Export()
         {
-            var result = new Dictionary<string, BasePanel>();
-
-            foreach (var kv in Cache)
-            {
-                result[kv.Key] = kv.Value;
-            }
-
+            var result = new Dictionary<Type, BasePanel>();
+            foreach (var kv in Cache) result[kv.Key] = kv.Value;
             Clear();
-
             return result;
         }
     }

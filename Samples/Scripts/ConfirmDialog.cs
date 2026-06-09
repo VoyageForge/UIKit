@@ -6,6 +6,7 @@ using VoyageForge.UIKit.Runtime;
 namespace VoyageForge.UIKit.Samples
 {
     [RequireComponent(typeof(CanvasGroup))]
+   [PanelPath("ConfirmDialog")]
     public class ConfirmDialog : FullPanel
     {
         private Button _confirmButton;
@@ -41,7 +42,7 @@ namespace VoyageForge.UIKit.Samples
 
             var popup = await UIManager.Instance
                 .PopupManager
-                .ShowAsync<ToastPopup>("ToastPopup");
+                .ShowAsync<ToastPopup>();
         }
 
         private void OnCancel()

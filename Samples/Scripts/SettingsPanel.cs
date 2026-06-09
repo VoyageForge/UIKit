@@ -7,6 +7,7 @@ namespace VoyageForge.UIKit.Samples
 {
     
     [RequireComponent(typeof(CanvasGroup))]
+    [PanelPath("SettingsPanel")]
     public class SettingsPanel : FullPanel
     {
         private Button _backButton;

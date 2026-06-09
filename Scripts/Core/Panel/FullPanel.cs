@@ -40,7 +40,7 @@ namespace VoyageForge.UIKit.Runtime
 
         internal async UniTask ShowSelfAsync()
         {
-           await UIManager.Instance.ShowAsync(this.PanelKey,this);
+           await UIManager.Instance.ShowAsync(this);
         }
         
         internal void CloseSelf() => CloseSelfAsync().Forget();
