@@ -21,11 +21,11 @@ namespace VoyageForge.UIKit.Samples
 
             if (_settingsButton != null)
                 _settingsButton.onClick.AddListener(() =>
-                    UIManager.Instance.Show<SettingsPanel>());
+                    UIManager.Instance.ShowAsync<SettingsPanel>().Forget());
 
             if (_dialogButton != null)
                 _dialogButton.onClick.AddListener(() =>
-                    UIManager.Instance.Show<ConfirmDialog>());
+                    UIManager.Instance.ShowAsync<ConfirmDialog>().Forget());
 
             
             return UniTask.CompletedTask;

@@ -38,7 +38,7 @@ namespace VoyageForge.UIKit.Samples
         private async void OnConfirm()
         {
             Debug.Log("[ConfirmDialog] 确认");
-            UIManager.Instance.Hide();
+            await UIManager.Instance.HideAsync();
 
             var popup = await UIManager.Instance
                 .PopupManager

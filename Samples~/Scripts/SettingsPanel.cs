@@ -27,7 +27,7 @@ namespace VoyageForge.UIKit.Samples
 
             if (_backButton != null)
                 _backButton.onClick.AddListener(() =>
-                    UIManager.Instance.Hide());
+                    UIManager.Instance.HideAsync().Forget());
 
             if (_volumeSlider != null)
                 _volumeSlider.onValueChanged.AddListener(val =>
