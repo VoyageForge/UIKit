@@ -67,14 +67,11 @@ Close(panel):
 
 | 方法 | 说明 |
 |------|------|
-| `Show<T>()` | 打开 FullPanel（Fire & Forget） |
-| `ShowAsync<T>()` | 打开 FullPanel（异步） |
-| `Show(FullPanel)` | 打开已有实例 |
-| `ShowAsync(FullPanel)` | 打开已有实例（异步） |
-| `Hide()` | 关闭栈顶（Fire & Forget） |
-| `HideAsync()` | 关闭栈顶（异步） |
-| `Close(BasePanel)` | 销毁面板 |
-| `CloseAsync(BasePanel)` | 销毁面板（异步） |
+| `ShowAsync<T>()` | 打开 FullPanel |
+| `ShowAsync(FullPanel)` | 打开已有实例 |
+| `HideAsync()` | 关闭栈顶 |
+| `HideAsync(FullPanel)` | 关闭指定面板 |
+| `CloseAsync(BasePanel)` | 销毁面板 |
 | `GetActivePanel()` | 获取栈顶 |
 | `OnInput(key, down)` | 输入路由 |
 | `PanelProvider` | 可读写，设值时自动迁移缓存 |
@@ -135,8 +132,8 @@ public class ShopPanel : FullPanel
 
 ```csharp
 // 打开面板
-UIManager.Instance.Show<ShopPanel>();
-UIManager.Instance.Hide();  // 返回
+await UIManager.Instance.ShowAsync<ShopPanel>();
+await UIManager.Instance.HideAsync();  // 返回
 
 // 弹窗
 await UIManager.Instance.PopupManager.ShowAsync<ToastPopup>();
