@@ -50,7 +50,9 @@ namespace VoyageForge.UIKit.Editor
 
         private static string GetPath(GameObject prefab)
         {
-            return Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(prefab));
+            // Assets/xxx/yyy/PrefabName.prefab → xxx/yyy/PrefabName
+            var p = AssetDatabase.GetAssetPath(prefab);
+            return p.StartsWith("Assets/") ? p[7..^7] : p; // strip "Assets/" and ".prefab"
         }
 
         private static void WriteAttribute(System.Type type, string path)
