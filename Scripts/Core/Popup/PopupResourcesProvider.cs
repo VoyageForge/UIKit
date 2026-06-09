@@ -32,9 +32,10 @@ namespace VoyageForge.UIKit.Runtime
             var idx = path.LastIndexOf("Resources/", StringComparison.Ordinal);
             var resPath = idx >= 0 ? path[(idx + 10)..] : path;
 
-            var prefab = await Resources.LoadAsync<BasePanel>(resPath);
-            if (prefab == null) return null;
-            return Object.Instantiate(prefab);
+            var req = Resources.LoadAsync<GameObject>(resPath);
+            await req;
+            if (req.asset == null) return null;
+            return Object.Instantiate(req.asset).GetComponent<BasePanel>();
         }
     }
 }
