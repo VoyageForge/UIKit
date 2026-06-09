@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -27,7 +28,7 @@ namespace VoyageForge.UIKit.Runtime
 
         protected override BasePanel Instantiate(string path)
         {
-            var idx = path.LastIndexOf("Resources/");
+            var idx = path.LastIndexOf("Resources/", StringComparison.Ordinal);
             var resPath = idx >= 0 ? path[(idx + 10)..] : path;
 
             var prefab = Resources.Load<BasePanel>(resPath);

@@ -22,7 +22,9 @@ namespace VoyageForge.UIKit.Runtime
 
         private void OnDestroy()
         {
-            UIManager.Instance.UnregisterSceneContext().Forget();
+            // 不用 Instance（会触发单例创建），场景卸载时 UIManager 可能已销毁
+            var ui = FindObjectOfType<UIManager>();
+            if (ui != null) ui.UnregisterSceneContext().Forget();
         }
     }
 }
