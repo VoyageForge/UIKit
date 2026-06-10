@@ -50,7 +50,12 @@ namespace VoyageForge.UIKit.Runtime
             await exiting.Hide();
 
             if (_panels.Count > 0)
-                await _panels[^1].Resume();
+            {
+                var last = _panels[^1];
+                
+                await last.Resume();
+            }
+               
 
             return exiting;
         }

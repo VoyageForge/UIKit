@@ -8,7 +8,7 @@ namespace VoyageForge.UIKit.Runtime
 {
     public class PopupManager : IPopupManager
     {
-        private readonly Dictionary<Type, PopupPanel> _active = new();
+        private readonly Dictionary<Type, List<PopupPanel>> _active = new();
 
         private IPopupProvider _provider = new PopupResourcesProvider();
 
@@ -29,21 +29,29 @@ namespace VoyageForge.UIKit.Runtime
             if (from != null) to.Import(from.Export());
         }
 
+        /// <summary>
+        /// Reparent all active panels to the new root.
+        /// </summary>
         private void ReparentAll()
         {
-            foreach (var panel in _active.Values)
-                if (panel != null)
-                    panel.transform.SetParent(_provider.Root, false);
+            foreach (var panels in _active.Values)
+                if (panels != null)
+                    foreach (var popup in panels)
+                    {
+                        popup.transform.SetParent(_provider.Root, false);
+                    }
         }
 
         // ---- Show ----
 
+      
         public async UniTask<T> ShowAsync<T>() where T : PopupPanel
         {
             var panel = await _provider.LoadAsync<T>();
             if (panel == null) return null;
             return await ShowInternal(panel);
         }
+        
 
         public UniTask ShowAsync(PopupPanel panel) => ShowInternal(panel);
 
@@ -52,68 +60,71 @@ namespace VoyageForge.UIKit.Runtime
             if (panel == null) return null;
             var type = panel.GetType();
 
-            if (_active.TryGetValue(type, out var existing) && existing == panel)
+            if (_active.TryGetValue(type, out var popups) 
+                && popups != null
+                && popups.Contains(panel))
             {
-                return panel;
+                popups.Add(panel);
+               
             }
-            
+            else
+            {
+                if (popups == null)
+                {
+                    popups = new List<PopupPanel>();
+                    _active[type] = popups;
+                }
+                popups.Add(panel);
+            }
+
             panel.transform.SetParent(_provider.Root, false);
-            _active[type] = panel;
+            _active[type].Add(panel);
             await panel.Show();
             return panel;
         }
 
         // ---- Hide ----
 
-        public async UniTask HideAsync<T>() where T : PopupPanel
-        {
-            if (_active.Remove(typeof(T), out var panel))
-            {
-                await panel.Hide();
-                _provider.Release(panel);
-            }
-        }
+       
 
         public async UniTask HideAsync(PopupPanel panel)
         {
             if (panel == null) return;
             var type = panel.GetType();
 
-            if (_active.TryGetValue(type, out var active) && active == panel)
-                _active.Remove(type);
+            if (_active.TryGetValue(type, out var popups) 
+                && popups != null 
+                && popups.Contains(panel))
+                popups.Remove(panel);
             else
             {
-                Object.Destroy(panel.gameObject);
                 return;
             }
-               
+
             await panel.Hide();
             _provider.Release(panel);
         }
 
-        // ---- Close ----
-
-        public async UniTask CloseAsync<T>() where T : PopupPanel
-        {
-            if (_active.Remove(typeof(T), out var panel))
-                await panel.Close();
-        }
+    
 
         public async UniTask CloseAsync(PopupPanel panel)
         {
             if (panel == null) return;
             var type = panel.GetType();
 
-            if (_active.TryGetValue(type, out var active) && active == panel)
-                _active.Remove(type);
-            else
-                return;
+            if (_active.TryGetValue(type, out var popups)
+                && popups != null
+                && popups.Count > 0 
+                && popups.Remove(panel))
+            {
+               
+            }
+            
+               
             await panel.Close();
         }
 
-        public bool IsShowing<T>() where T : PopupPanel =>
-            _active.TryGetValue(typeof(T), out var p) && p.State == BasePanel.PanelState.Active;
-
+       
         public void Dispose() => _active.Clear();
     }
 }

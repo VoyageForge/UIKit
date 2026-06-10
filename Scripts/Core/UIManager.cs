@@ -9,7 +9,7 @@ namespace VoyageForge.UIKit.Runtime
     public class UIManager : MonoSingleton<UIManager>
     {
         private readonly ViewStack _stack = new();
-        
+
         private SceneUIContext _sceneContext;
 
         private readonly PopupManager _popup = new();
@@ -28,7 +28,7 @@ namespace VoyageForge.UIKit.Runtime
         }
 
         private void OnDestroy() => _stack?.Dispose();
-        
+
         protected override void OnApplicationQuit() => _stack?.Dispose();
 
         // ---- 场景上下文 ----
@@ -76,6 +76,7 @@ namespace VoyageForge.UIKit.Runtime
                 Debug.LogError($"[UIManager] Show failed: {typeof(T).Name}");
                 return null;
             }
+
             await _stack.Push(panel);
             return panel;
         }
@@ -96,8 +97,19 @@ namespace VoyageForge.UIKit.Runtime
         /// <summary> 隐藏指定 FullPanel（异步）。 </summary>
         public async UniTask HideAsync(FullPanel panel)
         {
-            if (_stack.Peek() == panel) await _stack.Pop();
-            await panel.Hide();
+            var top = _stack.Peek();
+
+            if (top == panel)
+            {
+                await HideAsync();
+            }
+            else
+            {
+                await panel.Hide();
+                await top.Resume();
+
+                PanelProvider.Register(panel);
+            }
         }
 
         /// <summary> 获取栈顶面板。 </summary>

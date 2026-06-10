@@ -4,9 +4,14 @@ using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using VoyageForge.UIKit.Runtime;
 
 namespace VoyageForge.UIKit.Tests
 {
+    /// <summary>
+    /// UIManager 集成测试 — 验证 ShowAsync/HideAsync/PanelProvider 热切换。
+    /// 需要管理 MonoSingleton 的静态状态防止测试间交叉影响。
+    /// </summary>
     public class UIManagerTests
     {
         private TestPanelProvider _provider;
@@ -29,11 +34,13 @@ namespace VoyageForge.UIKit.Tests
             if (instance != null)
             {
                 Object.DestroyImmediate(instance.gameObject);
-                // MonoSingleton 静态字段重置
                 ClearSingleton();
             }
         }
 
+        /// <summary>
+        /// 重置 MonoSingleton 静态字段以免测试间交叉污染。
+        /// </summary>
         private static void ClearSingleton()
         {
             var baseType = typeof(UIManager).BaseType;
@@ -46,6 +53,9 @@ namespace VoyageForge.UIKit.Tests
             quitField?.SetValue(null, false);
         }
 
+        /// <summary>
+        /// ShowAsync 应返回对应面板实例，State=Active。
+        /// </summary>
         [UnityTest]
         public IEnumerator ShowAsync_ReturnsPanel_Active() => UniTask.ToCoroutine(async () =>
         {
@@ -60,29 +70,35 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreEqual(BasePanel.PanelState.Active, panel.State);
         });
 
+        /// <summary>
+        /// Show 两个不同类型面板 → HideAsync → 栈顶出栈，下层 Resume。
+        /// </summary>
         [UnityTest]
         public IEnumerator HideAsync_PopsAndResumes() => UniTask.ToCoroutine(async () =>
         {
-            _go1 = new GameObject("Panel1");
-            _go2 = new GameObject("Panel2");
-            var panel1 = _go1.AddComponent<TestFullPanel>();
-            var panel2 = _go2.AddComponent<TestFullPanel>();
+            _go1 = new GameObject("PanelA");
+            _go2 = new GameObject("PanelB");
+            var panelA = _go1.AddComponent<TestFullPanelA>();
+            var panelB = _go2.AddComponent<TestFullPanelB>();
 
-            _provider.Register(panel1);
-            _provider.Register(panel2);
+            _provider.Register(panelA);
+            _provider.Register(panelB);
 
-            await UIManager.Instance.ShowAsync<TestFullPanel>();
-            await UIManager.Instance.ShowAsync<TestFullPanel>();
+            await UIManager.Instance.ShowAsync<TestFullPanelA>();
+            await UIManager.Instance.ShowAsync<TestFullPanelB>();
 
-            Assert.AreEqual(BasePanel.PanelState.Paused, panel1.State);
-            Assert.AreEqual(BasePanel.PanelState.Active, panel2.State);
+            Assert.AreEqual(BasePanel.PanelState.Paused, panelA.State);
+            Assert.AreEqual(BasePanel.PanelState.Active, panelB.State);
 
             await UIManager.Instance.HideAsync();
 
-            Assert.AreEqual(BasePanel.PanelState.Active, panel1.State);
-            Assert.AreEqual(BasePanel.PanelState.Inactive, panel2.State);
+            Assert.AreEqual(BasePanel.PanelState.Active, panelA.State);
+            Assert.AreEqual(BasePanel.PanelState.Inactive, panelB.State);
         });
 
+        /// <summary>
+        /// 运行时切换 PanelProvider → 旧缓存自动迁移到新 Provider。
+        /// </summary>
         [UnityTest]
         public IEnumerator PanelProviderSwap_CacheMigrated() => UniTask.ToCoroutine(async () =>
         {

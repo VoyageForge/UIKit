@@ -3,11 +3,12 @@ using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using VoyageForge.UIKit.Runtime;
 
 namespace VoyageForge.UIKit.Tests
 {
     /// <summary>
-    /// PopupManager 测试 — 重点覆盖多弹窗 List 行为。
+    /// PopupManager 弹窗管理测试 — 重点覆盖多弹窗 List 行为及 Provider 热切换。
     /// </summary>
     public class PopupManagerTests
     {
@@ -29,8 +30,11 @@ namespace VoyageForge.UIKit.Tests
                 Object.DestroyImmediate(_provider.Root.gameObject);
         }
 
-        // ---- 基础 Show / Hide / Close ----
+        // ==================== 基础 Show / Hide / Close ====================
 
+        /// <summary>
+        /// ShowAsync 创建并显示弹窗 → State=Active，OnCreate+OnShow 触发。
+        /// </summary>
         [UnityTest]
         public IEnumerator ShowAsync_CreatesAndShows() => UniTask.ToCoroutine(async () =>
         {
@@ -45,6 +49,9 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreEqual(1, result.OnShowCount);
         });
 
+        /// <summary>
+        /// Hide 后将弹窗回收到 Provider 缓存中，可再次取出。
+        /// </summary>
         [UnityTest]
         public IEnumerator HideAsync_Caches() => UniTask.ToCoroutine(async () =>
         {
@@ -56,11 +63,13 @@ namespace VoyageForge.UIKit.Tests
 
             Assert.AreEqual(BasePanel.PanelState.Inactive, popup.State);
             Assert.AreEqual(1, popup.OnHideCount);
-            // Provider 缓存中有回收的 popup
             Assert.IsTrue(_provider.TryGet(typeof(TestPopupPanel), out var cached));
             Assert.AreSame(popup, cached);
         });
 
+        /// <summary>
+        /// Close 销毁弹窗 → OnClose 触发，gameObject 被 Destroy。
+        /// </summary>
         [UnityTest]
         public IEnumerator CloseAsync_Destroys() => UniTask.ToCoroutine(async () =>
         {
@@ -69,14 +78,17 @@ namespace VoyageForge.UIKit.Tests
             await _manager.ShowAsync(popup);
 
             await _manager.CloseAsync(popup);
-            yield return null;
+            await UniTask.Yield();
 
             Assert.AreEqual(1, popup.OnCloseCount);
             Assert.IsTrue(popup == null);
         });
 
-        // ---- 多弹窗：同类型 ----
+        // ==================== 多弹窗：同类型 / 不同类型 ====================
 
+        /// <summary>
+        /// 同类型弹两个 → 两个都 Active，挂在同一个 Root 下。
+        /// </summary>
         [UnityTest]
         public IEnumerator ShowTwo_SameType_BothActive() => UniTask.ToCoroutine(async () =>
         {
@@ -91,11 +103,13 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreNotSame(r1, r2);
             Assert.AreEqual(BasePanel.PanelState.Active, r1.State);
             Assert.AreEqual(BasePanel.PanelState.Active, r2.State);
-            // 两个应挂在同一个 Root 下
             Assert.AreSame(_provider.Root, r1.transform.parent);
             Assert.AreSame(_provider.Root, r2.transform.parent);
         });
 
+        /// <summary>
+        /// 不同类型各弹一个 → 各自独立 List，互不影响。
+        /// </summary>
         [UnityTest]
         public IEnumerator ShowTwo_DifferentType_SeparateLists() => UniTask.ToCoroutine(async () =>
         {
@@ -107,13 +121,15 @@ namespace VoyageForge.UIKit.Tests
             var rA = await _manager.ShowAsync<TestPopupPanelA>();
             var rB = await _manager.ShowAsync<TestPopupPanelB>();
 
-            // 两种类型都正常显示
             Assert.AreEqual(BasePanel.PanelState.Active, rA.State);
             Assert.AreEqual(BasePanel.PanelState.Active, rB.State);
         });
 
-        // ---- 多弹窗：Hide/Close 其中一个 —剩下那个不受影响 ----
+        // ==================== 多弹窗：Hide/Close 其中一个 ====================
 
+        /// <summary>
+        /// 同类型弹两个，Hide 其中一个 → 被 Hide 的变为 Inactive，另一个不受影响。
+        /// </summary>
         [UnityTest]
         public IEnumerator HideOne_SameType_OtherRemains() => UniTask.ToCoroutine(async () =>
         {
@@ -125,14 +141,15 @@ namespace VoyageForge.UIKit.Tests
             await _manager.ShowAsync(popup1);
             await _manager.ShowAsync(popup2);
 
-            // Hide popup1
             await _manager.HideAsync(popup1);
 
             Assert.AreEqual(BasePanel.PanelState.Inactive, popup1.State);
-            // popup2 不受影响
             Assert.AreEqual(BasePanel.PanelState.Active, popup2.State);
         });
 
+        /// <summary>
+        /// 同类型弹两个，Close 其中一个 → 被销毁，另一个仍 Active。
+        /// </summary>
         [UnityTest]
         public IEnumerator CloseOne_SameType_OtherRemains() => UniTask.ToCoroutine(async () =>
         {
@@ -145,15 +162,17 @@ namespace VoyageForge.UIKit.Tests
             await _manager.ShowAsync(popup2);
 
             await _manager.CloseAsync(popup1);
-            yield return null;
+            await UniTask.Yield();
 
             Assert.IsTrue(popup1 == null);
-            // popup2 不受影响，仍 Active
             Assert.AreEqual(BasePanel.PanelState.Active, popup2.State);
         });
 
-        // ---- Provider 热切换 ----
+        // ==================== Provider 热切换 ====================
 
+        /// <summary>
+        /// 运行时切换 Provider → 旧缓存迁移到新 Provider，已激活弹窗 Reparent 到新 Root。
+        /// </summary>
         [UnityTest]
         public IEnumerator ProviderSwitch_MigratesCache() => UniTask.ToCoroutine(async () =>
         {
@@ -162,19 +181,16 @@ namespace VoyageForge.UIKit.Tests
             await _manager.ShowAsync(popup);
             await _manager.HideAsync(popup);
 
-            // popup 已在旧 provider 缓存中
             var newProvider = new TestPopupProvider();
             _manager.Provider = newProvider;
 
-            // 缓存应迁移到新 provider
             Assert.IsTrue(newProvider.TryGet(typeof(TestPopupPanel), out var cached));
             Assert.AreSame(popup, cached);
 
-            // 清理
             Object.DestroyImmediate(newProvider.Root.gameObject);
         });
 
-        // ---- Helpers ----
+        // ==================== Helpers ====================
 
         private TestPopupPanel CreatePopup(string name = "TestPopup")
         {

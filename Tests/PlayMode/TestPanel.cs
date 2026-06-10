@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
+using VoyageForge.UIKit.Runtime;
+using Object = UnityEngine.Object;
 
 namespace VoyageForge.UIKit.Tests
 {
     /// <summary>
-    /// 测试用 FullPanel — 覆写所有生命周期钩子记录调用。
+    /// 测试用 FullPanel — 覆写所有生命周期钩子并记录调用次数和顺序。
     /// </summary>
     public class TestFullPanel : FullPanel
     {
@@ -19,7 +21,6 @@ namespace VoyageForge.UIKit.Tests
         public int OnResumeCount;
         public readonly List<string> CallOrder = new();
 
-        // 方便测试：设定 Show 是否应成功
         public bool FailOnCreate;
 
         protected override UniTask OnCreate()
@@ -68,7 +69,33 @@ namespace VoyageForge.UIKit.Tests
     }
 
     /// <summary>
-    /// 测试用 PopupPanel — 覆写所有生命周期钩子记录调用。
+    /// 测试用 FullPanel A — 与 TestFullPanelB 类型不同，用于避开 Provider 同 key 缓存覆盖。
+    /// </summary>
+    public class TestFullPanelA : FullPanel
+    {
+        protected override UniTask OnCreate() => UniTask.CompletedTask;
+        protected override UniTask OnShow()   => UniTask.CompletedTask;
+        protected override UniTask OnHide()   => UniTask.CompletedTask;
+        protected override UniTask OnClose()  => UniTask.CompletedTask;
+        protected override UniTask OnPause()  => UniTask.CompletedTask;
+        protected override UniTask OnResume() => UniTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// 测试用 FullPanel B — 与 TestFullPanelA 类型不同，用于多层 Push 混合测试。
+    /// </summary>
+    public class TestFullPanelB : FullPanel
+    {
+        protected override UniTask OnCreate() => UniTask.CompletedTask;
+        protected override UniTask OnShow()   => UniTask.CompletedTask;
+        protected override UniTask OnHide()   => UniTask.CompletedTask;
+        protected override UniTask OnClose()  => UniTask.CompletedTask;
+        protected override UniTask OnPause()  => UniTask.CompletedTask;
+        protected override UniTask OnResume() => UniTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// 测试用 PopupPanel — 覆写所有生命周期钩子并记录调用次数和顺序。
     /// </summary>
     public class TestPopupPanel : PopupPanel
     {
@@ -108,29 +135,29 @@ namespace VoyageForge.UIKit.Tests
     }
 
     /// <summary>
-    /// 测试用 PopupPanel A 类型 — 用于不同弹窗类型混合测试。
+    /// 测试用 PopupPanel A — 与 B 类型不同，用于验证独立弹窗 List。
     /// </summary>
     public class TestPopupPanelA : PopupPanel
     {
         protected override UniTask OnCreate() => UniTask.CompletedTask;
-        protected override UniTask OnShow() => UniTask.CompletedTask;
-        protected override UniTask OnHide() => UniTask.CompletedTask;
-        protected override UniTask OnClose() => UniTask.CompletedTask;
+        protected override UniTask OnShow()   => UniTask.CompletedTask;
+        protected override UniTask OnHide()   => UniTask.CompletedTask;
+        protected override UniTask OnClose()  => UniTask.CompletedTask;
     }
 
     /// <summary>
-    /// 测试用 PopupPanel B 类型 — 与 A 类型不同，用于验证独立 List。
+    /// 测试用 PopupPanel B — 与 A 类型不同，用于验证不同类型各自维护独立 List。
     /// </summary>
     public class TestPopupPanelB : PopupPanel
     {
         protected override UniTask OnCreate() => UniTask.CompletedTask;
-        protected override UniTask OnShow() => UniTask.CompletedTask;
-        protected override UniTask OnHide() => UniTask.CompletedTask;
-        protected override UniTask OnClose() => UniTask.CompletedTask;
+        protected override UniTask OnShow()   => UniTask.CompletedTask;
+        protected override UniTask OnHide()   => UniTask.CompletedTask;
+        protected override UniTask OnClose()  => UniTask.CompletedTask;
     }
 
     /// <summary>
-    /// 测试用 PanelProvider — 不真正加载资源，通过 Register 预注入 panel。
+    /// 测试用 FullPanel Provider — 不真正加载资源，通过 Register 预注入 panel 实例。
     /// </summary>
     public class TestPanelProvider : PanelProviderBase
     {
@@ -141,7 +168,7 @@ namespace VoyageForge.UIKit.Tests
     }
 
     /// <summary>
-    /// 测试用 PopupProvider — 创建测试 Canvas Root，通过 Register 预注入 popup。
+    /// 测试用 Popup Provider — 自动创建 Canvas Root，通过 Register 预注入 popup 实例。
     /// </summary>
     public class TestPopupProvider : PopupProviderBase
     {

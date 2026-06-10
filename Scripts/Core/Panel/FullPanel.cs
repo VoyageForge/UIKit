@@ -60,7 +60,12 @@ namespace VoyageForge.UIKit.Runtime
         /// </summary>
         public async UniTask HideSelfAsync()
         {
-            await UIManager.Instance.HideAsync(this);
+            // 只有在 Active 状态下才关闭
+            if (State == PanelState.Active)
+            {
+                await UIManager.Instance.HideAsync(this);
+            }
+            
         }
 
         // ---- 可覆写 ----

@@ -13,20 +13,44 @@ namespace VoyageForge.UIKit.Runtime
     {
         public enum PanelState
         {
-            Inactive, // 未激活
-            Active, // 显示中
-            Paused, // 暂停（仅 FullPanel）
-            Exiting // 关闭中
+            /// <summary>
+            /// 未激活状态
+            /// </summary>
+            Inactive, 
+            /// <summary>
+            /// 显示中状态
+            /// </summary>
+            Active, 
+            /// <summary>
+            /// 暂停状态（仅 FullPanel）
+            /// </summary>
+            Paused, 
+            /// <summary>
+            /// 关闭中状态
+            /// </summary>
+            Exiting 
         }
 
-        public event Action OnShowed; // Show 后
-        public event Action OnHided; // Hide 后
-        public event Action OnClosed; // Close 后（销毁前）
+        /// <summary>
+        /// 显示后触发
+        /// </summary>
+        public event Action OnShowed; 
+        /// <summary>
+        /// 隐藏后触发
+        /// </summary>
+        public event Action OnHided; 
+        /// <summary>
+        /// 关闭后触发
+        /// </summary>
+        public event Action OnClosed; 
 
         private bool _created;
 
         private protected PanelState _state = PanelState.Inactive;
 
+        /// <summary>
+        /// 获取当前面板状态
+        /// </summary>
         public PanelState State => _state;
 
         // ---- Internal API ----
@@ -80,8 +104,13 @@ namespace VoyageForge.UIKit.Runtime
         /// <summary> 彻底关闭时调用。子类在此注销事件、清理资源。 </summary>
         protected virtual UniTask OnClose() => UniTask.CompletedTask;
 
-        // ---- 输入 ----
-
+        
+        /// <summary>
+        /// 处理输入事件
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="down"></param>
+        /// <returns></returns>
         public virtual bool OnInput(KeyCode key, bool down)
         {
             if (!down) return false;
