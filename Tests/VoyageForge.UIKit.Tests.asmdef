@@ -1,0 +1,19 @@
+{
+    "name": "VoyageForge.UIKit.Tests",
+    "rootNamespace": "",
+    "references": [
+        "VoyageForge.UIKit.Runtime",
+        "UniTask",
+        "UnityEngine.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "noEngineReferences": false
+}
