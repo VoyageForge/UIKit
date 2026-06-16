@@ -14,13 +14,9 @@ namespace VoyageForge.UIKit.Samples
         private Slider _volumeSlider;
         private Text _volumeLabel;
         private float _savedVolume = 1f;
-        private CanvasGroup _canvasGroup;
-
 
         protected override UniTask OnCreate()
         {
-            _canvasGroup = GetComponent<CanvasGroup>();
-            
             _backButton = GetComponentInChildrenByName<Button>("BackButton");
             _volumeSlider = GetComponentInChildren<Slider>();
             _volumeLabel = GetComponentInChildrenByName<Text>("VolumeLabel");
@@ -63,19 +59,11 @@ namespace VoyageForge.UIKit.Samples
         
         protected override UniTask OnShow()
         {
-            _canvasGroup.alpha = 1;
-            _canvasGroup.blocksRaycasts = true;
-            _canvasGroup.interactable = true;
-            
             return base.OnShow();
         }
 
         protected override UniTask OnHide()
         {
-            _canvasGroup.alpha = 0;
-            _canvasGroup.blocksRaycasts = false;
-            _canvasGroup.interactable = false;
-            
             return base.OnHide();
         }
         

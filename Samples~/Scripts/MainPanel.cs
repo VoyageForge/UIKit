@@ -20,12 +20,18 @@ namespace VoyageForge.UIKit.Samples
             _dialogButton = System.Array.Find(buttons, b => b.name == "DialogButton");
 
             if (_settingsButton != null)
-                _settingsButton.onClick.AddListener(() =>
-                    UIManager.Instance.ShowAsync<SettingsPanel>().Forget());
+                _settingsButton.onClick.AddListener(async () =>
+                {
+                    var panel = await UIManager.Instance.GetPanel<SettingsPanel>();
+                    await panel.ShowSelfAsync();
+                });
 
             if (_dialogButton != null)
-                _dialogButton.onClick.AddListener(() =>
-                    UIManager.Instance.ShowAsync<ConfirmDialog>().Forget());
+                _dialogButton.onClick.AddListener(async () =>
+                {
+                    var panel = await UIManager.Instance.GetPanel<ConfirmDialog>();
+                    await panel.ShowSelfAsync();
+                });
 
             
             return UniTask.CompletedTask;

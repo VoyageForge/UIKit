@@ -68,6 +68,14 @@ namespace VoyageForge.UIKit.Runtime
                 await OnCreate();
             }
 
+            var cg = GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+                cg.blocksRaycasts = true;
+                cg.interactable = true;
+            }
+
             await OnShow();
             OnShowed?.Invoke();
         }
@@ -77,6 +85,15 @@ namespace VoyageForge.UIKit.Runtime
         {
             if (_state != PanelState.Active && _state != PanelState.Paused) return;
             _state = PanelState.Inactive;
+
+            var cg = GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 0f;
+                cg.blocksRaycasts = false;
+                cg.interactable = false;
+            }
+
             await OnHide();
             OnHided?.Invoke();
         }

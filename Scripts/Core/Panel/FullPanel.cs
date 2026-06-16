@@ -1,10 +1,12 @@
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace VoyageForge.UIKit.Runtime
 {
     /// <summary>
     /// 全屏/场景面板基类 — 可压入 ViewStack，参与导航（Pause/Resume）。
     /// </summary>
+    [RequireComponent(typeof(CanvasGroup))]
     public abstract class FullPanel : BasePanel
     {
         // ---- 事件 ----
@@ -40,7 +42,7 @@ namespace VoyageForge.UIKit.Runtime
 
         public async UniTask ShowSelfAsync()
         {
-           await UIManager.Instance.ShowAsync(this);
+            await UIManager.Instance.PushAsync(this);
         }
         
         public void CloseSelf() => CloseSelfAsync().Forget();

@@ -40,7 +40,7 @@ namespace VoyageForge.UIKit.Runtime
             {
                 if (entry.Panel == null) continue;
                 if (entry.Panel.gameObject.activeSelf)
-                    await ShowAsync(entry.Panel);
+                    await PushAsync(entry.Panel);
                 else
                     PanelProvider.Register(entry.Panel);
             }
@@ -67,39 +67,20 @@ namespace VoyageForge.UIKit.Runtime
 
         // ---- 公开 API ----
 
-        /// <summary>
-        /// 获得一个面板
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
-        public async UniTask<T> GetPanelAsync<T>() where T : BasePanel
-        {
-            throw new NotImplementedException();
-        }
-
-
-        /// <summary> 显示 FullPanel（异步）。 </summary>
-        public async UniTask<T> ShowAsync<T>() where T : FullPanel
+        /// <summary> 从 Provider 加载 FullPanel（不自动显示，需手动调用 ShowSelfAsync）。 </summary>
+        public async UniTask<T> GetPanel<T>() where T : FullPanel
         {
             var panel = await PanelProvider.LoadAsync<T>();
-
             if (panel == null)
-            {
-                Debug.LogError($"[UIManager] Show failed: {typeof(T).Name}");
-                return null;
-            }
-
-            // ABB/ABA 防护由 ViewStack.Push 内部处理
-            return (T)await ShowAsync(panel);
+                Debug.LogError($"[UIManager] GetPanel failed: {typeof(T).Name}");
+            return panel;
         }
 
-        /// <summary> 显示已有 FullPanel 实例（异步）。 </summary>
-        public async UniTask<FullPanel> ShowAsync(FullPanel panel)
+        /// <summary> 将 FullPanel 压入导航栈并显示。 </summary>
+        public async UniTask PushAsync(FullPanel panel)
         {
-            if (panel == null) return null;
+            if (panel == null) return;
             await _stack.Push(panel);
-            return panel;
         }
 
         /// <summary> 隐藏栈顶（异步）。 </summary>
