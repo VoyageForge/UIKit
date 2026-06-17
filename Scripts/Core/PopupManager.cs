@@ -42,45 +42,41 @@ namespace VoyageForge.UIKit.Runtime
                     }
         }
 
-        // ---- Show ----
+        // ---- Get ----
 
-      
-        public async UniTask<T> ShowAsync<T>() where T : PopupPanel
+        /// <summary> 异步加载 PopupPanel，完成后回调（不自动显示）。 </summary>
+        public async void GetPopup<T>(Action<T> onLoaded) where T : PopupPanel
+        {
+            var panel = await GetPopupAsync<T>();
+            onLoaded?.Invoke(panel);
+        }
+
+        /// <summary> 从 Provider 加载 PopupPanel（不自动显示，需手动调用 ShowSelfAsync）。 </summary>
+        public async UniTask<T> GetPopupAsync<T>() where T : PopupPanel
         {
             var panel = await _provider.LoadAsync<T>();
-            if (panel == null) return null;
-            return await ShowInternal(panel);
+            return panel;
         }
-        
 
-        public UniTask ShowAsync(PopupPanel panel) => ShowInternal(panel);
+        // ---- Show ----
 
-        private async UniTask<T> ShowInternal<T>(T panel) where T : PopupPanel
+        /// <summary> 显示 PopupPanel 实例。 </summary>
+        public async UniTask ShowPopupAsync(PopupPanel panel)
         {
-            if (panel == null) return null;
+            if (panel == null) return;
             var type = panel.GetType();
 
-            if (_active.TryGetValue(type, out var popups) 
-                && popups != null
-                && popups.Contains(panel))
+            if (!_active.TryGetValue(type, out var popups) || popups == null)
             {
-                popups.Add(panel);
-               
-            }
-            else
-            {
-                if (popups == null)
-                {
-                    popups = new List<PopupPanel>();
-                    _active[type] = popups;
-                }
-                popups.Add(panel);
+                popups = new List<PopupPanel>();
+                _active[type] = popups;
             }
 
+            if (!popups.Contains(panel))
+                popups.Add(panel);
+
             panel.transform.SetParent(_provider.Root, false);
-            _active[type].Add(panel);
             await panel.Show();
-            return panel;
         }
 
         // ---- Hide ----

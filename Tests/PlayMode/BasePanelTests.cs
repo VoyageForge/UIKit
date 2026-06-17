@@ -43,7 +43,7 @@ namespace VoyageForge.UIKit.Tests
         public IEnumerator FirstShow_CallsOnCreateThenOnShow() => UniTask.ToCoroutine(async () =>
         {
             _provider.Register(_panel);
-            await _popupManager.ShowAsync(_panel);
+            await _popupManager.ShowPopupAsync(_panel);
 
             Assert.AreEqual(1, _panel.OnCreateCount);
             Assert.AreEqual(1, _panel.OnShowCount);
@@ -60,11 +60,11 @@ namespace VoyageForge.UIKit.Tests
         public IEnumerator ShowHideShow_OnCreateOnlyOnce() => UniTask.ToCoroutine(async () =>
         {
             _provider.Register(_panel);
-            await _popupManager.ShowAsync(_panel);
+            await _popupManager.ShowPopupAsync(_panel);
             await _popupManager.HideAsync(_panel);
 
             Assert.IsTrue(_provider.TryGet(typeof(TestPopupPanel), out var cached));
-            await _popupManager.ShowAsync(cached);
+            await _popupManager.ShowPopupAsync(cached);
 
             Assert.AreEqual(1, _panel.OnCreateCount, "OnCreate 只应触发一次");
             Assert.AreEqual(2, _panel.OnShowCount, "OnShow 应触发两次");
@@ -78,7 +78,7 @@ namespace VoyageForge.UIKit.Tests
         public IEnumerator Close_RunsOnClose_AndSetsExiting() => UniTask.ToCoroutine(async () =>
         {
             _provider.Register(_panel);
-            await _popupManager.ShowAsync(_panel);
+            await _popupManager.ShowPopupAsync(_panel);
 
             var go = _panel.gameObject;
             await _popupManager.CloseAsync(_panel);
@@ -97,10 +97,10 @@ namespace VoyageForge.UIKit.Tests
         public IEnumerator DuplicateShow_WhenAlreadyActive_IsNoop() => UniTask.ToCoroutine(async () =>
         {
             _provider.Register(_panel);
-            await _popupManager.ShowAsync(_panel);
+            await _popupManager.ShowPopupAsync(_panel);
 
             var showCount = _panel.OnShowCount;
-            await _popupManager.ShowAsync(_panel);
+            await _popupManager.ShowPopupAsync(_panel);
 
             Assert.AreEqual(showCount, _panel.OnShowCount, "Active 状态不应重复触发 OnShow");
         });

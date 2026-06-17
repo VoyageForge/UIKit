@@ -18,7 +18,7 @@ namespace VoyageForge.UIKit.Runtime
         /// </summary>
         public async UniTask ShowSelfAsync()
         {
-            await UIManager.Popup.ShowAsync(this);
+            await UIManager.Popup.ShowPopupAsync(this);
         }
 
         /// <summary>

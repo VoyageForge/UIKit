@@ -9,7 +9,7 @@ using VoyageForge.UIKit.Runtime;
 namespace VoyageForge.UIKit.Tests
 {
     /// <summary>
-    /// UIManager 集成测试 — 验证 ShowAsync/HideAsync/PanelProvider 热切换。
+    /// UIManager 集成测试 — 验证 GetPanel/PushAsync/HideAsync/PanelProvider 热切换。
     /// 需要管理 MonoSingleton 的静态状态防止测试间交叉影响。
     /// </summary>
     public class UIManagerTests
@@ -54,16 +54,17 @@ namespace VoyageForge.UIKit.Tests
         }
 
         /// <summary>
-        /// ShowAsync 应返回对应面板实例，State=Active。
+        /// GetPanel + ShowSelfAsync 应返回对应面板实例，State=Active。
         /// </summary>
         [UnityTest]
-        public IEnumerator ShowAsync_ReturnsPanel_Active() => UniTask.ToCoroutine(async () =>
+        public IEnumerator GetPanel_ShowSelf_ReturnsPanel_Active() => UniTask.ToCoroutine(async () =>
         {
             _go1 = new GameObject("TestPanel");
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            var result = await UIManager.Instance.ShowAsync<TestFullPanel>();
+            var result = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
+            await result.ShowSelfAsync();
 
             Assert.IsNotNull(result);
             Assert.AreSame(panel, result);
@@ -71,7 +72,7 @@ namespace VoyageForge.UIKit.Tests
         });
 
         /// <summary>
-        /// Show 两个不同类型面板 → HideAsync → 栈顶出栈，下层 Resume。
+        /// Push 两个不同类型面板 → HideAsync → 栈顶出栈，下层 Resume。
         /// </summary>
         [UnityTest]
         public IEnumerator HideAsync_PopsAndResumes() => UniTask.ToCoroutine(async () =>
@@ -84,8 +85,10 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(panelA);
             _provider.Register(panelB);
 
-            await UIManager.Instance.ShowAsync<TestFullPanelA>();
-            await UIManager.Instance.ShowAsync<TestFullPanelB>();
+            var a = await UIManager.Instance.GetPanelAsync<TestFullPanelA>();
+            await a.ShowSelfAsync();
+            var b = await UIManager.Instance.GetPanelAsync<TestFullPanelB>();
+            await b.ShowSelfAsync();
 
             Assert.AreEqual(BasePanel.PanelState.Paused, panelA.State);
             Assert.AreEqual(BasePanel.PanelState.Active, panelB.State);
@@ -106,7 +109,8 @@ namespace VoyageForge.UIKit.Tests
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            await UIManager.Instance.ShowAsync<TestFullPanel>();
+            var loaded = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
+            await loaded.ShowSelfAsync();
             await UIManager.Instance.HideAsync();
 
             var newProvider = new TestPanelProvider();
@@ -126,7 +130,8 @@ namespace VoyageForge.UIKit.Tests
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            await UIManager.Instance.ShowAsync<TestFullPanel>();
+            var loaded = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
+            await loaded.ShowSelfAsync();
             var result = await UIManager.Instance.HideAsync();
 
             Assert.IsNotNull(result);
@@ -134,10 +139,10 @@ namespace VoyageForge.UIKit.Tests
         });
 
         /// <summary>
-        /// ABA: Show<A> → Show<B> → 重新注册 A → Show<A> → Push 检测 ABA 并拒绝，栈保持 [A, B]。
+        /// ABA: Push<A> → Push<B> → 重新注册 A → Push<A> → Push 检测 ABA 并拒绝，栈保持 [A, B]。
         /// </summary>
         [UnityTest]
-        public IEnumerator ShowAsync_ABA_Rejected() => UniTask.ToCoroutine(async () =>
+        public IEnumerator PushAsync_ABA_Rejected() => UniTask.ToCoroutine(async () =>
         {
             _go1 = new GameObject("PanelA");
             _go2 = new GameObject("PanelB");
@@ -147,15 +152,18 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(panelA);
             _provider.Register(panelB);
 
-            await UIManager.Instance.ShowAsync<TestFullPanel>();   // [A]
-            await UIManager.Instance.ShowAsync<TestFullPanelA>();   // [A, B]
+            var a = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
+            await a.ShowSelfAsync();                              // [A]
+            var b = await UIManager.Instance.GetPanelAsync<TestFullPanelA>();
+            await b.ShowSelfAsync();                              // [A, B]
 
             // 重新注册 A 到 Provider（模拟 A 在缓存中可用）
             _provider.Register(panelA);
             LogAssert.Expect(LogType.Error, "[ViewStack] 不允许 ABA: TestFullPanel 已在栈中，不能重复 Push");
-            var resultA2 = await UIManager.Instance.ShowAsync<TestFullPanel>(); // ABA → Push 报错
+            var a2 = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
+            await a2.ShowSelfAsync();                             // ABA → Push 报错
 
-            Assert.IsNotNull(resultA2, "LoadAsync 成功返回 panel，但 Push 因 ABA 拒绝压栈");
+            Assert.IsNotNull(a2, "GetPanel 成功返回 panel，但 Push 因 ABA 拒绝压栈");
             Assert.AreEqual(BasePanel.PanelState.Active, panelB.State, "B 仍在栈顶 Active");
         });
     }

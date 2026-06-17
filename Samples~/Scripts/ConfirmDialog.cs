@@ -10,15 +10,10 @@ namespace VoyageForge.UIKit.Samples
     public class ConfirmDialog : FullPanel
     {
         private Button _confirmButton;
-
         private Button _cancelButton;
-
-        private CanvasGroup _canvasGroup;
 
         protected override UniTask OnCreate()
         {
-            _canvasGroup = GetComponent<CanvasGroup>();
-
             var buttons = GetComponentsInChildren<Button>();
             _confirmButton = System.Array.Find(buttons, b => b.name == "ConfirmButton");
             _cancelButton = System.Array.Find(buttons, b => b.name == "CancelButton");
@@ -40,9 +35,9 @@ namespace VoyageForge.UIKit.Samples
             Debug.Log("[ConfirmDialog] 确认");
             await UIManager.Instance.HideAsync();
 
-            var popup = await UIManager
-                .Popup
-                .ShowAsync<ToastPopup>();
+            var popup = await UIManager.Popup.GetPopupAsync<ToastPopup>();
+            if (popup != null)
+                await popup.ShowSelfAsync();
         }
 
         private void OnCancel()
@@ -53,19 +48,11 @@ namespace VoyageForge.UIKit.Samples
 
         protected override UniTask OnShow()
         {
-            _canvasGroup.alpha = 1;
-            _canvasGroup.blocksRaycasts = true;
-            _canvasGroup.interactable = true;
-
             return base.OnShow();
         }
 
         protected override UniTask OnHide()
         {
-            _canvasGroup.alpha = 0;
-            _canvasGroup.blocksRaycasts = false;
-            _canvasGroup.interactable = false;
-
             return base.OnHide();
         }
 

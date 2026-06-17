@@ -9,6 +9,7 @@ namespace VoyageForge.UIKit.Runtime
     /// 首次 Show 触发 OnCreate → 每次 Show 触发 OnShow。
     /// Hide 触发 OnHide（缓存）；Close 触发 OnClose（销毁）。
     /// </summary>
+    [RequireComponent(typeof(CanvasGroup))]
     public abstract class BasePanel : MonoBehaviour
     {
         public enum PanelState
@@ -16,35 +17,40 @@ namespace VoyageForge.UIKit.Runtime
             /// <summary>
             /// 未激活状态
             /// </summary>
-            Inactive, 
+            Inactive,
             /// <summary>
             /// 显示中状态
             /// </summary>
-            Active, 
+            Active,
             /// <summary>
             /// 暂停状态（仅 FullPanel）
             /// </summary>
-            Paused, 
+            Paused,
             /// <summary>
             /// 关闭中状态
             /// </summary>
-            Exiting 
+            Exiting
         }
 
         /// <summary>
         /// 显示后触发
         /// </summary>
-        public event Action OnShowed; 
+        public event Action OnShowed;
         /// <summary>
         /// 隐藏后触发
         /// </summary>
-        public event Action OnHided; 
+        public event Action OnHided;
         /// <summary>
         /// 关闭后触发
         /// </summary>
-        public event Action OnClosed; 
+        public event Action OnClosed;
 
         private bool _created;
+
+        /// <summary>
+        /// 面板绑定的 CanvasGroup 组件。
+        /// </summary>
+        public CanvasGroup CanvasGroup { get; private set; }
 
         private protected PanelState _state = PanelState.Inactive;
 
@@ -52,6 +58,11 @@ namespace VoyageForge.UIKit.Runtime
         /// 获取当前面板状态
         /// </summary>
         public PanelState State => _state;
+
+        protected virtual void Awake()
+        {
+            CanvasGroup = GetComponent<CanvasGroup>();
+        }
 
         // ---- Internal API ----
 
@@ -68,6 +79,7 @@ namespace VoyageForge.UIKit.Runtime
                 await OnCreate();
             }
 
+            SetCanvasGroupVisible(true);
             await OnShow();
             OnShowed?.Invoke();
         }
@@ -77,6 +89,8 @@ namespace VoyageForge.UIKit.Runtime
         {
             if (_state != PanelState.Active && _state != PanelState.Paused) return;
             _state = PanelState.Inactive;
+
+            SetCanvasGroupVisible(false);
             await OnHide();
             OnHided?.Invoke();
         }
@@ -88,6 +102,14 @@ namespace VoyageForge.UIKit.Runtime
             await OnClose();
             OnClosed?.Invoke();
             Destroy(gameObject);
+        }
+
+        /// <summary> 设置 CanvasGroup 可见性。子类可调用。 </summary>
+        protected void SetCanvasGroupVisible(bool visible)
+        {
+            CanvasGroup.alpha = visible ? 1f : 0f;
+            CanvasGroup.blocksRaycasts = visible;
+            CanvasGroup.interactable = visible;
         }
 
         // ---- 可覆写生命周期 ----

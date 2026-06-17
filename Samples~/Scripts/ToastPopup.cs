@@ -15,18 +15,13 @@ namespace VoyageForge.UIKit.Samples
     {
         [SerializeField] private Text _messageText;
 
+        private CancellationTokenSource _cancellationTokenSource;
 
-        private CancellationTokenSource _cancellationTokenSource; // 任务的生命周期管理者
-        private CanvasGroup _canvasGroup;
-
-        protected override async UniTask OnCreate()
+        protected override UniTask OnCreate()
         {
-            _canvasGroup = GetComponent<CanvasGroup>();
-
             if (_messageText != null)
                 _messageText.text = "操作成功！";
-
-            await base.OnCreate();
+            return UniTask.CompletedTask;
         }
 
         protected override UniTask OnShow()
@@ -36,10 +31,6 @@ namespace VoyageForge.UIKit.Samples
             _cancellationTokenSource = new CancellationTokenSource();
 
             AutoHide(_cancellationTokenSource.Token).Forget();
-
-            _canvasGroup.alpha = 1;
-            _canvasGroup.blocksRaycasts = true;
-            _canvasGroup.interactable = true;
             return base.OnShow();
         }
 
@@ -49,13 +40,8 @@ namespace VoyageForge.UIKit.Samples
             await HideSelfAsync();
         }
 
-
         protected override UniTask OnHide()
         {
-            _canvasGroup.alpha = 0;
-            _canvasGroup.blocksRaycasts = false;
-            _canvasGroup.interactable = false;
-
             return base.OnHide();
         }
     }

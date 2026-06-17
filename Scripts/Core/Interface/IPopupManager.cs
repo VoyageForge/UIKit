@@ -6,18 +6,14 @@ namespace VoyageForge.UIKit.Runtime
     public interface IPopupManager : IDisposable
     {
         /// <summary>
-        /// 显示弹窗
+        /// 从 Provider 加载弹窗（不自动显示）。
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        UniTask<T> ShowAsync<T>() where T : PopupPanel;
-        
+        UniTask<T> GetPopupAsync<T>() where T : PopupPanel;
+
         /// <summary>
-        /// 显示弹窗
+        /// 显示弹窗实例。
         /// </summary>
-        /// <param name="panel"></param>
-        /// <returns></returns>
-        UniTask ShowAsync(PopupPanel panel);
+        UniTask ShowPopupAsync(PopupPanel panel);
 
         /// <summary>
         /// 隐藏弹窗

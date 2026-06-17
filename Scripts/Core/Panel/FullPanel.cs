@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace VoyageForge.UIKit.Runtime
 {
@@ -40,7 +41,7 @@ namespace VoyageForge.UIKit.Runtime
 
         public async UniTask ShowSelfAsync()
         {
-           await UIManager.Instance.ShowAsync(this);
+            await UIManager.Instance.PushAsync(this);
         }
         
         public void CloseSelf() => CloseSelfAsync().Forget();
