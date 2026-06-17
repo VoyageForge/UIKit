@@ -8,7 +8,7 @@ namespace VoyageForge.UIKit.Runtime
         /// <summary>
         /// 从 Provider 加载弹窗（不自动显示）。
         /// </summary>
-        UniTask<T> GetPopup<T>() where T : PopupPanel;
+        UniTask<T> GetPopupAsync<T>() where T : PopupPanel;
 
         /// <summary>
         /// 显示弹窗实例。

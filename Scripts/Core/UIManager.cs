@@ -67,12 +67,19 @@ namespace VoyageForge.UIKit.Runtime
 
         // ---- 公开 API ----
 
+        /// <summary> 异步加载 FullPanel，完成后回调（不自动显示）。 </summary>
+        public async void GetPanel<T>(Action<T> onLoaded) where T : FullPanel
+        {
+            var panel = await GetPanelAsync<T>();
+            onLoaded?.Invoke(panel);
+        }
+
         /// <summary> 从 Provider 加载 FullPanel（不自动显示，需手动调用 ShowSelfAsync）。 </summary>
-        public async UniTask<T> GetPanel<T>() where T : FullPanel
+        public async UniTask<T> GetPanelAsync<T>() where T : FullPanel
         {
             var panel = await PanelProvider.LoadAsync<T>();
             if (panel == null)
-                Debug.LogError($"[UIManager] GetPanel failed: {typeof(T).Name}");
+                Debug.LogError($"[UIManager] GetPanelAsync failed: {typeof(T).Name}");
             return panel;
         }
 

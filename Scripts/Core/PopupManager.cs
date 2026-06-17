@@ -44,8 +44,15 @@ namespace VoyageForge.UIKit.Runtime
 
         // ---- Get ----
 
+        /// <summary> 异步加载 PopupPanel，完成后回调（不自动显示）。 </summary>
+        public async void GetPopup<T>(Action<T> onLoaded) where T : PopupPanel
+        {
+            var panel = await GetPopupAsync<T>();
+            onLoaded?.Invoke(panel);
+        }
+
         /// <summary> 从 Provider 加载 PopupPanel（不自动显示，需手动调用 ShowSelfAsync）。 </summary>
-        public async UniTask<T> GetPopup<T>() where T : PopupPanel
+        public async UniTask<T> GetPopupAsync<T>() where T : PopupPanel
         {
             var panel = await _provider.LoadAsync<T>();
             return panel;

@@ -63,7 +63,7 @@ namespace VoyageForge.UIKit.Tests
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            var result = await UIManager.Instance.GetPanel<TestFullPanel>();
+            var result = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
             await result.ShowSelfAsync();
 
             Assert.IsNotNull(result);
@@ -85,9 +85,9 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(panelA);
             _provider.Register(panelB);
 
-            var a = await UIManager.Instance.GetPanel<TestFullPanelA>();
+            var a = await UIManager.Instance.GetPanelAsync<TestFullPanelA>();
             await a.ShowSelfAsync();
-            var b = await UIManager.Instance.GetPanel<TestFullPanelB>();
+            var b = await UIManager.Instance.GetPanelAsync<TestFullPanelB>();
             await b.ShowSelfAsync();
 
             Assert.AreEqual(BasePanel.PanelState.Paused, panelA.State);
@@ -109,7 +109,7 @@ namespace VoyageForge.UIKit.Tests
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            var loaded = await UIManager.Instance.GetPanel<TestFullPanel>();
+            var loaded = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
             await loaded.ShowSelfAsync();
             await UIManager.Instance.HideAsync();
 
@@ -130,7 +130,7 @@ namespace VoyageForge.UIKit.Tests
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            var loaded = await UIManager.Instance.GetPanel<TestFullPanel>();
+            var loaded = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
             await loaded.ShowSelfAsync();
             var result = await UIManager.Instance.HideAsync();
 
@@ -152,15 +152,15 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(panelA);
             _provider.Register(panelB);
 
-            var a = await UIManager.Instance.GetPanel<TestFullPanel>();
+            var a = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
             await a.ShowSelfAsync();                              // [A]
-            var b = await UIManager.Instance.GetPanel<TestFullPanelA>();
+            var b = await UIManager.Instance.GetPanelAsync<TestFullPanelA>();
             await b.ShowSelfAsync();                              // [A, B]
 
             // 重新注册 A 到 Provider（模拟 A 在缓存中可用）
             _provider.Register(panelA);
             LogAssert.Expect(LogType.Error, "[ViewStack] 不允许 ABA: TestFullPanel 已在栈中，不能重复 Push");
-            var a2 = await UIManager.Instance.GetPanel<TestFullPanel>();
+            var a2 = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
             await a2.ShowSelfAsync();                             // ABA → Push 报错
 
             Assert.IsNotNull(a2, "GetPanel 成功返回 panel，但 Push 因 ABA 拒绝压栈");

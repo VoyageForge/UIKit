@@ -22,14 +22,14 @@ namespace VoyageForge.UIKit.Samples
             if (_settingsButton != null)
                 _settingsButton.onClick.AddListener(async () =>
                 {
-                    var panel = await UIManager.Instance.GetPanel<SettingsPanel>();
+                    var panel = await UIManager.Instance.GetPanelAsync<SettingsPanel>();
                     await panel.ShowSelfAsync();
                 });
 
             if (_dialogButton != null)
                 _dialogButton.onClick.AddListener(async () =>
                 {
-                    var panel = await UIManager.Instance.GetPanel<ConfirmDialog>();
+                    var panel = await UIManager.Instance.GetPanelAsync<ConfirmDialog>();
                     await panel.ShowSelfAsync();
                 });
 

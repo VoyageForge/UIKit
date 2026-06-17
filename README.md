@@ -15,8 +15,8 @@ UIManager (MonoSingleton)
 
 | 类型 | 基类 | 压栈 | Pause/Resume | 打开方式 |
 |------|------|------|-------------|---------|
-| 全屏面板 | `FullPanel` | 是 | 支持 | `UIManager.GetPanel<T>()` + `.ShowSelfAsync()` |
-| 弹窗 | `PopupPanel` | 否 | 无 | `UIManager.Popup.GetPopup<T>()` + `.ShowSelfAsync()` |
+| 全屏面板 | `FullPanel` | 是 | 支持 | `UIManager.GetPanelAsync<T>()` + `.ShowSelfAsync()` |
+| 弹窗 | `PopupPanel` | 否 | 无 | `UIManager.Popup.GetPopupAsync<T>()` + `.ShowSelfAsync()` |
 
 ---
 
@@ -70,7 +70,8 @@ Close(panel):
 
 | 方法 | 返回 | 说明 |
 |------|------|------|
-| `GetPanel<T>()` | `UniTask<T>` | 加载 FullPanel（不自动显示） |
+| `GetPanel<T>(Action<T>)` | `void` | 异步加载，完成后回调 |
+| `GetPanelAsync<T>()` | `UniTask<T>` | 加载 FullPanel（异步，不自动显示） |
 | `PushAsync(FullPanel)` | `UniTask` | 将实例压入导航栈并显示 |
 | `HideAsync()` | `UniTask<FullPanel>` | 关闭栈顶，返回被关闭的面板 |
 | `HideAsync(FullPanel)` | `UniTask<FullPanel>` | 关闭指定面板，返回被关闭的面板 |
@@ -84,7 +85,8 @@ Close(panel):
 
 | 方法 | 返回 | 说明 |
 |------|------|------|
-| `GetPopup<T>()` | `UniTask<T>` | 加载弹窗（不自动显示） |
+| `GetPopup<T>(Action<T>)` | `void` | 异步加载，完成后回调 |
+| `GetPopupAsync<T>()` | `UniTask<T>` | 加载弹窗（异步，不自动显示） |
 | `ShowPopupAsync(PopupPanel)` | `UniTask` | 显示已有弹窗实例 |
 | `HideAsync(PopupPanel)` | `UniTask` | 隐藏弹窗（回池缓存） |
 | `CloseAsync(PopupPanel)` | `UniTask` | 销毁弹窗 |
@@ -137,13 +139,13 @@ public class ShopPanel : FullPanel
 
 ```csharp
 // 打开面板
-var shopPanel = await UIManager.Instance.GetPanel<ShopPanel>();
+var shopPanel = await UIManager.Instance.GetPanelAsync<ShopPanel>();
 await shopPanel.ShowSelfAsync();
 
 await UIManager.Instance.HideAsync();  // 返回
 
 // 弹窗
-var toast = await UIManager.Popup.GetPopup<ToastPopup>();
+var toast = await UIManager.Popup.GetPopupAsync<ToastPopup>();
 await toast.ShowSelfAsync();
 ```
 
