@@ -184,16 +184,24 @@ namespace VoyageForge.UIKit.Tests
     /// </summary>
     public class TestPopupProvider : PopupProviderBase
     {
-        public TestPopupProvider()
+       
+
+        public override Transform Root  
         {
-            var go = new GameObject("[Test] PopupCanvas");
-            var canvas = go.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 9999;
-            go.AddComponent<CanvasScaler>();
-            go.AddComponent<GraphicRaycaster>();
-            Object.DontDestroyOnLoad(go);
-            _root = go.transform;
+            get
+            {
+                if (_root != null) return _root;
+                var go = new GameObject("[Test] PopupCanvas");
+                var canvas = go.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.sortingOrder = 9999;
+                go.AddComponent<CanvasScaler>();
+                go.AddComponent<GraphicRaycaster>();
+                Object.DontDestroyOnLoad(go);
+                _root = go.transform;
+                
+                return _root;
+            }
         }
 
         protected override UniTask<T> InstantiateAsync<T>(string path)

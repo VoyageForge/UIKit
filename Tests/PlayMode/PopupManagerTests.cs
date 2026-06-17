@@ -42,7 +42,7 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(popup);
 
             var result = await _manager.GetPopupAsync<TestPopupPanel>();
-            await result.ShowSelfAsync();
+            await _manager.ShowPopupAsync(result);
 
             Assert.IsNotNull(result);
             Assert.AreEqual(BasePanel.PanelState.Active, result.State);
@@ -99,13 +99,15 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(popup2);
 
             var r1 = await _manager.GetPopupAsync<TestPopupPanel>();
-            await r1.ShowSelfAsync();
+            await _manager.ShowPopupAsync(r1);
             var r2 = await _manager.GetPopupAsync<TestPopupPanel>();
-            await r2.ShowSelfAsync();
+            await _manager.ShowPopupAsync(r2);
 
             Assert.AreNotSame(r1, r2);
             Assert.AreEqual(BasePanel.PanelState.Active, r1.State);
             Assert.AreEqual(BasePanel.PanelState.Active, r2.State);
+
+
             Assert.AreSame(_provider.Root, r1.transform.parent);
             Assert.AreSame(_provider.Root, r2.transform.parent);
         });
@@ -122,9 +124,9 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(popupB);
 
             var rA = await _manager.GetPopupAsync<TestPopupPanelA>();
-            await rA.ShowSelfAsync();
+            await _manager.ShowPopupAsync(rA);
             var rB = await _manager.GetPopupAsync<TestPopupPanelB>();
-            await rB.ShowSelfAsync();
+            await _manager.ShowPopupAsync(rB);
 
             Assert.AreEqual(BasePanel.PanelState.Active, rA.State);
             Assert.AreEqual(BasePanel.PanelState.Active, rB.State);
