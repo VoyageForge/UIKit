@@ -423,9 +423,10 @@ public class PrefabManagerWindow : EditorWindow
         if (isCreatingFolder || currentFolder == null) return;
         isCreatingFolder = true;
 
-        // 创建输入行
+        // 创建输入行容器，强制宽度为 100%
         newFolderRow = new VisualElement();
         newFolderRow.AddToClassList("new-folder-row");
+        newFolderRow.style.width = Length.Percent(100);
 
         var icon = new Label("[F]");
         icon.AddToClassList("icon");
@@ -434,6 +435,9 @@ public class PrefabManagerWindow : EditorWindow
         newFolderInput = new TextField();
         newFolderInput.AddToClassList("input");
         newFolderInput.focusable = true;
+        // 限制输入框最大宽度，防止溢出
+        newFolderInput.style.maxWidth = Length.Percent(100);
+        newFolderInput.style.flexShrink = 1;
         newFolderInput.RegisterCallback<KeyDownEvent>(evt =>
         {
             if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
@@ -451,7 +455,7 @@ public class PrefabManagerWindow : EditorWindow
         cancelBtn.AddToClassList("cancel-btn");
         newFolderRow.Add(cancelBtn);
 
-        // 插入到 listContainer 顶部（在 scrollView 之上）
+        // 插入到 listContainer 顶部（注意：listContainer 是 flex 容器，宽度由父级决定）
         listContainer.Insert(0, newFolderRow);
         newFolderInput.Focus();
         newFolderInput.SelectAll();

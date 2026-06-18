@@ -100,6 +100,7 @@ Button.primary:hover {
 /* ============================================================
    新建文件夹输入行
    ============================================================ */
+/* 新建文件夹输入行 */
 .new-folder-row {
     flex-direction: row;
     align-items: center;
@@ -112,6 +113,8 @@ Button.primary:hover {
     border-radius: 8px;
     border-width: 1px;
     border-color: #4a4a4a;
+    width: 100%;              /* 确保占满父容器宽度 */
+    box-sizing: border-box;   /* padding 包含在宽度内 */
 }
 .new-folder-row .icon {
     width: 40px;
@@ -121,6 +124,8 @@ Button.primary:hover {
 }
 .new-folder-row .input {
     flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;             /* 允许收缩，防止溢出 */
     margin-left: 8px;
     margin-right: 8px;
     background-color: transparent;
@@ -136,6 +141,7 @@ Button.primary:hover {
     font-size: 16px;
     border-width: 0;
     margin-right: 4px;
+    flex-shrink: 0;
 }
 .new-folder-row .confirm-btn:hover {
     background-color: #3a3a3a;
@@ -145,6 +151,7 @@ Button.primary:hover {
     color: #787f8c;
     font-size: 16px;
     border-width: 0;
+    flex-shrink: 0;
 }
 .new-folder-row .cancel-btn:hover {
     background-color: #3a3a3a;

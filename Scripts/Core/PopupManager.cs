@@ -88,14 +88,14 @@ namespace VoyageForge.UIKit.Runtime
             if (panel == null) return;
             var type = panel.GetType();
 
-            if (_active.TryGetValue(type, out var popups) 
-                && popups != null 
-                && popups.Contains(panel))
-                popups.Remove(panel);
-            else
-            {
+            if (!_active.TryGetValue(type, out var popups) || popups == null || !popups.Contains(panel))
                 return;
-            }
+
+            popups.Remove(panel);
+
+            // 清理空列表，避免字典膨胀
+            if (popups.Count == 0)
+                _active.Remove(type);
 
             await panel.Hide();
             _provider.Release(panel);
@@ -108,15 +108,15 @@ namespace VoyageForge.UIKit.Runtime
             if (panel == null) return;
             var type = panel.GetType();
 
-            if (_active.TryGetValue(type, out var popups)
-                && popups != null
-                && popups.Count > 0 
-                && popups.Remove(panel))
+            if (_active.TryGetValue(type, out var popups) && popups != null)
             {
-               
+                popups.Remove(panel);
+
+                // 清理空列表，避免字典膨胀
+                if (popups.Count == 0)
+                    _active.Remove(type);
             }
-            
-               
+
             await panel.Close();
         }
 

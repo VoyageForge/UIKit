@@ -32,6 +32,9 @@ namespace VoyageForge.UIKit.Runtime
         /// <summary> 推入：暂停当前 → 入栈 → Show。 </summary>
         public async UniTask Push(FullPanel panel)
         {
+            if (panel == null)
+                throw new ArgumentNullException(nameof(panel), "[ViewStack] 不能 Push null 面板。");
+
             var t = panel.GetType();
 
             if (_panels.Count > 0)

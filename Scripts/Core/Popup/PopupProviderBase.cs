@@ -39,7 +39,8 @@ namespace VoyageForge.UIKit.Runtime
             var popup = await InstantiateAsync<T>(path);
 
             if (popup == null)
-                throw new Exception($"Popup provider for {path} not found");
+                throw new InvalidOperationException(
+                    $"[PopupProvider] 加载失败：类型 {typeof(T).Name}，路径 \"{path}\"。请检查预制体是否在 Resources 目录下，以及 PanelPath 特性是否正确。");
 
             return popup;
         }
