@@ -1,0 +1,151 @@
+/* ============================================================
+   全局暗色主题
+   ============================================================ */
+.unity-theme-enum {
+    background-color: #1e1e1e;
+    color: #e8edf3;
+}
+
+/* ============================================================
+   滚动条
+   ============================================================ */
+ScrollView > .unity-scroll-view__content-container {
+    padding: 0;
+}
+ScrollView .unity-scroller--vertical {
+    width: 6px;
+}
+ScrollView .unity-scroller--vertical .unity-base-slider__tracker {
+    background-color: #1e1e1e;
+}
+ScrollView .unity-scroller--vertical .unity-base-slider__dragger {
+    background-color: #444444;
+    border-radius: 10px;
+}
+ScrollView .unity-scroller--vertical .unity-base-slider__dragger:hover {
+    background-color: #555555;
+}
+
+/* ============================================================
+   树视图
+   ============================================================ */
+TreeView {
+    background-color: transparent;
+    border-width: 0;
+    color: #e8edf3;
+    font-size: 14px;
+}
+TreeView .unity-tree-view__item {
+    padding: 4px 0;
+    border-radius: 8px;
+}
+TreeView .unity-tree-view__item:hover {
+    background-color: #3a3a3a;
+}
+TreeView .unity-tree-view__item.selected {
+    background-color: #2b4058;
+}
+TreeView .unity-tree-view__item.selected .unity-tree-view__item__label {
+    color: #6dabf0;
+    -unity-font-style: bold;
+}
+TreeView .unity-tree-view__item__toggle {
+    width: 20px;
+    height: 20px;
+    color: #787f8c;
+    font-size: 12px;
+}
+TreeView .unity-tree-view__item__toggle:hover {
+    background-color: #333333;
+}
+TreeView .unity-tree-view__item__icon {
+    font-size: 16px;
+    margin-right: 6px;
+}
+
+/* ============================================================
+   拖拽高亮
+   ============================================================ */
+#listContainer.drag-over {
+    background-color: #2b4058;
+}
+#listContainer.drag-over #dragOverlay {
+    display: flex;
+}
+
+/* ============================================================
+   按钮
+   ============================================================ */
+Button {
+    background-color: #333333;
+    color: #e8edf3;
+    border-width: 1px;
+    border-color: #4a4a4a;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+Button:hover {
+    background-color: #3a3a3a;
+}
+Button.primary {
+    background-color: #2b6a9e;
+    border-color: #2b6a9e;
+    color: white;
+}
+Button.primary:hover {
+    background-color: #3a7ec4;
+}
+
+/* ============================================================
+   新建文件夹输入行
+   ============================================================ */
+.new-folder-row {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 12px;
+    padding-right: 12px;
+    margin-bottom: 6px;
+    background-color: #333333;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: #4a4a4a;
+}
+.new-folder-row .icon {
+    width: 40px;
+    font-size: 16px;
+    -unity-text-align: middle-center;
+    flex-shrink: 0;
+}
+.new-folder-row .input {
+    flex-grow: 1;
+    margin-left: 8px;
+    margin-right: 8px;
+    background-color: transparent;
+    border-width: 0;
+    color: #e8edf3;
+}
+.new-folder-row .input:focus {
+    background-color: transparent;
+}
+.new-folder-row .confirm-btn {
+    background-color: transparent;
+    color: #6dabf0;
+    font-size: 16px;
+    border-width: 0;
+    margin-right: 4px;
+}
+.new-folder-row .confirm-btn:hover {
+    background-color: #3a3a3a;
+}
+.new-folder-row .cancel-btn {
+    background-color: transparent;
+    color: #787f8c;
+    font-size: 16px;
+    border-width: 0;
+}
+.new-folder-row .cancel-btn:hover {
+    background-color: #3a3a3a;
+}
