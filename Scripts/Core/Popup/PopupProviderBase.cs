@@ -16,6 +16,7 @@ namespace VoyageForge.UIKit.Runtime
         }
 
         private Dictionary<Type, List<PopupPanel>> _cache = new();
+        private readonly Dictionary<Type, UniTaskCompletionSource<PopupPanel>> _pendingTcs = new();
 
         public IReadOnlyDictionary<Type, List<PopupPanel>> Cache => _cache;
 
@@ -26,23 +27,49 @@ namespace VoyageForge.UIKit.Runtime
         {
             var type = typeof(T);
 
+            // 1. 缓存命中
             if (_cache.TryGetValue(type, out var panel) && panel.Count != 0)
             {
                 var lastPanel = panel[^1];
                 panel.RemoveAt(panel.Count - 1);
-
                 return lastPanel as T;
             }
 
-            var path = PanelPathCache.GetPath<T>();
+            // 2. 飞行中请求去重：同类型并发加载时复用同一个任务
+            if (_pendingTcs.TryGetValue(type, out var existingTcs))
+            {
+                var waited = await existingTcs.Task;
+                return waited as T;
+            }
 
-            var popup = await InstantiateAsync<T>(path);
+            var tcs = new UniTaskCompletionSource<PopupPanel>();
+            _pendingTcs[type] = tcs;
 
-            if (popup == null)
-                throw new InvalidOperationException(
-                    $"[PopupProvider] 加载失败：类型 {typeof(T).Name}，路径 \"{path}\"。请检查预制体是否在 Resources 目录下，以及 PanelPath 特性是否正确。");
+            try
+            {
+                var path = PanelPathCache.GetPath<T>();
+                var popup = await InstantiateAsync<T>(path);
 
-            return popup;
+                if (popup == null)
+                {
+                    tcs.TrySetException(new InvalidOperationException(
+                        $"[PopupProvider] 加载失败：类型 {typeof(T).Name}，路径 \"{path}\"。请检查预制体是否在 Resources 目录下，以及 PanelPath 特性是否正确。"));
+                    throw new InvalidOperationException(
+                        $"[PopupProvider] 加载失败：类型 {typeof(T).Name}，路径 \"{path}\"。请检查预制体是否在 Resources 目录下，以及 PanelPath 特性是否正确。");
+                }
+
+                tcs.TrySetResult(popup);
+                return popup;
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+                throw;
+            }
+            finally
+            {
+                _pendingTcs.Remove(type);
+            }
         }
 
         public void Release(PopupPanel popup)
