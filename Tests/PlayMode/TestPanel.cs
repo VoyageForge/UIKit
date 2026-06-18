@@ -78,13 +78,14 @@ namespace VoyageForge.UIKit.Tests
         public int OnHideCount;
         public int OnPauseCount;
         public int OnResumeCount;
+        public readonly List<string> CallOrder = new();
 
-        protected override UniTask OnCreate() { OnCreateCount++; return UniTask.CompletedTask; }
-        protected override UniTask OnShow()   { OnShowCount++;   return UniTask.CompletedTask; }
-        protected override UniTask OnHide()   { OnHideCount++;   return UniTask.CompletedTask; }
-        protected override UniTask OnClose()  => UniTask.CompletedTask;
-        protected override UniTask OnPause()  { OnPauseCount++;  return UniTask.CompletedTask; }
-        protected override UniTask OnResume() { OnResumeCount++; return UniTask.CompletedTask; }
+        protected override UniTask OnCreate() { OnCreateCount++; CallOrder.Add(nameof(OnCreate)); return UniTask.CompletedTask; }
+        protected override UniTask OnShow()   { OnShowCount++;   CallOrder.Add(nameof(OnShow));   return UniTask.CompletedTask; }
+        protected override UniTask OnHide()   { OnHideCount++;   CallOrder.Add(nameof(OnHide));   return UniTask.CompletedTask; }
+        protected override UniTask OnClose()  { CallOrder.Add(nameof(OnClose)); return UniTask.CompletedTask; }
+        protected override UniTask OnPause()  { OnPauseCount++;  CallOrder.Add(nameof(OnPause));  return UniTask.CompletedTask; }
+        protected override UniTask OnResume() { OnResumeCount++; CallOrder.Add(nameof(OnResume)); return UniTask.CompletedTask; }
     }
 
     /// <summary>
