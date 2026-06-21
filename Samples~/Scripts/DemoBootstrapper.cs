@@ -26,6 +26,11 @@ namespace VoyageForge.UIKit.Samples
             }
 
             Debug.Log("[DemoBootstrapper] Starting Demo...");
+
+            // ContinueWith 回调形式：加载 MainPanel 完成后自动显示
+            UIManager.Panel.GetPanel<MainPanel>()
+                .ContinueWith(panel => panel.ShowSelfAsync().Forget())
+                .Forget();
         }
     }
 }

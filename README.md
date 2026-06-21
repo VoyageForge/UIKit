@@ -195,6 +195,11 @@ await UIManager.Panel.PopAsync();
 // 弹窗
 var toast = await UIManager.Popup.GetPopup<ToastPopup>();
 await toast.ShowSelfAsync();
+
+// ContinueWith 回调形式（UniTask 链式调用）
+UIManager.Panel.GetPanel<MyPanel>()
+    .ContinueWith(panel => panel.ShowSelfAsync().Forget())
+    .Forget();
 ```
 
 ---
