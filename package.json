@@ -21,7 +21,7 @@
     {
       "displayName": "UI Demo",
       "description": "Complete demo: MainPanel, SettingsPanel, ConfirmDialog, ToastPopup. Demonstrates FullPanel navigation and PopupPanel overlay.",
-      "path": "Samples"
+      "path": "Samples~"
     }
   ]
 }
