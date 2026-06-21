@@ -4,8 +4,11 @@ using VoyageForge.UIKit.Runtime;
 
 namespace VoyageForge.UIKit.Editor
 {
-    [CustomPropertyDrawer(typeof(PreplacedPanelEntry))]
-    public class PreplacedPanelEntryDrawer : PropertyDrawer
+    /// <summary>
+    /// SceneUIEntry 的自定义 PropertyDrawer。直接在 Inspector 行内绘制 Panel 字段引用。
+    /// </summary>
+    [CustomPropertyDrawer(typeof(SceneUIEntry))]
+    public class SceneUIEntryDrawer : PropertyDrawer
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {

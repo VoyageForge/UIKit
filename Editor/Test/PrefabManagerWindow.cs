@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
@@ -7,58 +7,65 @@ using System.Linq;
 
 // ============================================================
 //  Prefab Manager Editor Window
-//  功能：管理项目中的预制体，按文件夹分类，支持拖拽导入、重命名、
-//        双击聚焦，暗色主题，列表斑马纹。
-//  作者：xxx
-//  版本：1.0
+//  管理项目中的预制体，按文件夹分类，支持拖拽导入、重命名、
+//  双击聚焦，暗色主题，列表斑马纹。
 // ============================================================
 
+/// <summary>
+/// 预制体管理编辑器窗口。按文件夹树结构组织 prefab，支持拖拽导入、
+/// 双击聚焦到 Project 窗口、重命名文件夹，暗色主题带斑马纹交替行。
+/// 通过 Window > Prefab Manager 菜单打开。
+/// </summary>
 public class PrefabManagerWindow : EditorWindow
 {
-    // ---------- 数据模型 ----------
-    /// <summary>
-    /// 文件夹节点（树结构）
-    /// </summary>
+    // ---------- Data Model ----------
+
+    /// <summary>文件夹节点（树结构）。支持无限层级嵌套。</summary>
     private class FolderNode
     {
         public string id;
         public string name;
         public List<FolderNode> children = new List<FolderNode>();
         public FolderNode parent;
-        public List<PrefabEntry> prefabs = new List<PrefabEntry>(); // 该文件夹下的预制体列表
+        /// <summary>该文件夹下的预制体列表。</summary>
+        public List<PrefabEntry> prefabs = new List<PrefabEntry>();
     }
 
-    /// <summary>
-    /// 预制体条目（存储 GUID 和对象引用）
-    /// </summary>
+    /// <summary>预制体条目。存储 Asset GUID（跨会话稳定）和对象引用（用于聚焦）。</summary>
     private class PrefabEntry
     {
-        public string guid; // 预制体的 Asset GUID
-        public string name; // 显示名称
-        public Object prefab; // 直接引用（用于聚焦）
+        public string guid;
+        public string name;
+        public Object prefab;
     }
 
-    // ---------- 数据 ----------
-    private FolderNode rootFolder;
-    private FolderNode currentFolder; // 当前选中的文件夹
-    private HashSet<string> expandedFolders = new HashSet<string>(); // 记录树展开状态
+    // ---------- Data ----------
 
-    // ---------- UI 元素 ----------
+    /// <summary>文件夹树根节点。</summary>
+    private FolderNode rootFolder;
+    /// <summary>当前选中的文件夹（右侧列表展示其内容）。</summary>
+    private FolderNode currentFolder;
+    /// <summary>树展开状态记录。</summary>
+    private HashSet<string> expandedFolders = new HashSet<string>();
+
+    // ---------- UI Elements ----------
+
     private TreeView folderTreeView;
     private Label folderInfoLabel;
     private Label folderCountLabel;
-    private VisualElement listContainer; // 右侧列表容器（包含 scrollView 和 dragOverlay）
+    /// <summary>右侧列表容器（包含 ScrollView 和 drag overlay）。</summary>
+    private VisualElement listContainer;
     private Button newFolderButton;
 
-    [SerializeField] private VisualTreeAsset visualTree; // 主布局 UXML
-    [SerializeField] private VisualTreeAsset itemTemplate; // 列表项模板 UXML
+    [SerializeField] private VisualTreeAsset visualTree;
+    [SerializeField] private VisualTreeAsset itemTemplate;
 
-    // 新建文件夹输入行相关
     private VisualElement newFolderRow;
     private TextField newFolderInput;
     private bool isCreatingFolder = false;
 
-    // ---------- 窗口入口 ----------
+    // ---------- Window Entry ----------
+
     [MenuItem("Window/Prefab Manager")]
     public static void ShowWindow()
     {
@@ -69,23 +76,21 @@ public class PrefabManagerWindow : EditorWindow
     }
 
     // ============================================================
-    //  初始化
+    //  Initialization
     // ============================================================
+
     private void OnEnable()
     {
-        // 1. 初始化示例数据（实际使用时改为从 AssetDatabase 扫描）
         InitData();
 
-        // 2. 加载主布局
         if (visualTree == null)
         {
-            Debug.LogError("VisualTreeAsset 未赋值，请将 PrefabManagerWindow.uxml 拖入 Inspector 的 visualTree 字段。");
+            Debug.LogError("VisualTreeAsset not assigned. Drag PrefabManagerWindow.uxml into the visualTree field.");
             return;
         }
 
         visualTree.CloneTree(rootVisualElement);
 
-        // 3. 获取 UI 元素
         folderTreeView = rootVisualElement.Q<TreeView>("folderTreeView");
         folderInfoLabel = rootVisualElement.Q<Label>("folderInfo");
         folderCountLabel = rootVisualElement.Q<Label>("folderCount");
@@ -94,58 +99,54 @@ public class PrefabManagerWindow : EditorWindow
 
         if (folderTreeView == null || listContainer == null)
         {
-            Debug.LogError("UXML 中缺少关键元素，请检查名称是否匹配。");
+            Debug.LogError("Missing key elements in UXML. Check that names match.");
             return;
         }
 
-        // 确保 listContainer 可接收拖拽
         listContainer.pickingMode = PickingMode.Position;
 
-        // 4. 绑定事件
         if (newFolderButton != null)
             newFolderButton.clicked += OnNewFolderClicked;
 
-        folderTreeView.selectionChanged += OnTreeSelectionChanged; // 单击切换目录
-        folderTreeView.itemsChosen += OnTreeItemChosen; // 双击重命名
+        folderTreeView.selectionChanged += OnTreeSelectionChanged;
+        folderTreeView.itemsChosen += OnTreeItemChosen;
 
-        // 5. 初始状态
         expandedFolders.Add(rootFolder.id);
         currentFolder = rootFolder;
         RefreshTreeView();
         RefreshListView();
         SetupDragDrop();
 
-        // 6. 加载列表项模板（若未赋值则报错，但可降级使用代码构建）
         if (itemTemplate == null)
-            Debug.LogWarning("itemTemplate 未赋值，将使用代码动态构建列表项（性能略低）。");
+            Debug.LogWarning("itemTemplate not assigned. List items will be built via code (slightly lower perf).");
     }
 
-    // ---------- 数据初始化（示例） ----------
+    /// <summary>初始化示例数据。实际使用时改为从 AssetDatabase 扫描。</summary>
     private void InitData()
     {
-        rootFolder = new FolderNode { id = "root", name = "根目录" };
+        rootFolder = new FolderNode { id = "root", name = "Root" };
 
-        var docs = new FolderNode { id = "docs", name = "项目文档", parent = rootFolder };
+        var docs = new FolderNode { id = "docs", name = "Documents", parent = rootFolder };
         rootFolder.children.Add(docs);
-        var design = new FolderNode { id = "design", name = "设计稿", parent = docs };
+        var design = new FolderNode { id = "design", name = "Designs", parent = docs };
         docs.children.Add(design);
-        var requirements = new FolderNode { id = "req", name = "需求文档", parent = docs };
+        var requirements = new FolderNode { id = "req", name = "Requirements", parent = docs };
         docs.children.Add(requirements);
 
-        var resources = new FolderNode { id = "resources", name = "资源文件", parent = rootFolder };
+        var resources = new FolderNode { id = "resources", name = "Resources", parent = rootFolder };
         rootFolder.children.Add(resources);
-        var images = new FolderNode { id = "images", name = "图片", parent = resources };
+        var images = new FolderNode { id = "images", name = "Images", parent = resources };
         resources.children.Add(images);
-        var sounds = new FolderNode { id = "sounds", name = "音效", parent = resources };
+        var sounds = new FolderNode { id = "sounds", name = "Audio", parent = resources };
         resources.children.Add(sounds);
 
-        // 示例预制体（请确保这些路径存在，或修改为项目中的实际预制体）
         AddPrefabToFolder(design, "Assets/UI/Prefabs/Button.prefab");
         AddPrefabToFolder(design, "Assets/UI/Prefabs/Panel.prefab");
 
         currentFolder = rootFolder;
     }
 
+    /// <summary>向指定文件夹添加一个 prefab 条目。</summary>
     private void AddPrefabToFolder(FolderNode folder, string assetPath)
     {
         var obj = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
@@ -155,18 +156,18 @@ public class PrefabManagerWindow : EditorWindow
     }
 
     // ============================================================
-    //  树视图（左侧文件夹树）
+    //  Tree View (左侧文件夹树)
     // ============================================================
+
+    /// <summary>刷新左侧文件夹树视图。从 rootFolder 递归构建 TreeView 数据。</summary>
     private void RefreshTreeView()
     {
         if (folderTreeView == null) return;
 
-        // 构建树数据
         var treeData = new List<TreeViewItemData<FolderNode>>();
         BuildTreeData(rootFolder, treeData, 0);
         folderTreeView.SetRootItems(treeData);
 
-        // 设置显示模板（每个节点用一个 Label 显示名称）
         folderTreeView.makeItem = () => new Label();
         folderTreeView.bindItem = (element, index) =>
         {
@@ -175,17 +176,16 @@ public class PrefabManagerWindow : EditorWindow
         };
 
         folderTreeView.RefreshItems();
-        folderTreeView.ExpandAll(); // 展开所有（可根据 expandedFolders 控制）
+        folderTreeView.ExpandAll();
 
-        // 高亮当前选中
         if (currentFolder != null)
             folderTreeView.SetSelectionById(currentFolder.id.GetHashCode());
 
-        // 更新文件夹总数
         if (folderCountLabel != null)
             folderCountLabel.text = CountAllNodes(rootFolder).ToString();
     }
 
+    /// <summary>递归计算文件夹树节点总数。</summary>
     private int CountAllNodes(FolderNode node)
     {
         int count = 1;
@@ -194,6 +194,7 @@ public class PrefabManagerWindow : EditorWindow
         return count;
     }
 
+    /// <summary>递归构建 TreeView 的树数据。</summary>
     private void BuildTreeData(FolderNode node, List<TreeViewItemData<FolderNode>> list, int depth)
     {
         var item = new TreeViewItemData<FolderNode>(
@@ -209,8 +210,9 @@ public class PrefabManagerWindow : EditorWindow
         list.Add(item);
     }
 
-    // ---------- 树事件 ----------
-    /// <summary>单击树节点 → 切换当前文件夹并刷新列表</summary>
+    // ---------- Tree Events ----------
+
+    /// <summary>单击树节点 → 切换当前文件夹并刷新右侧列表。</summary>
     private void OnTreeSelectionChanged(IEnumerable<object> selectedItems)
     {
         var first = selectedItems.FirstOrDefault();
@@ -218,11 +220,11 @@ public class PrefabManagerWindow : EditorWindow
         {
             currentFolder = node;
             RefreshListView();
-            RefreshTreeView(); // 更新高亮
+            RefreshTreeView();
         }
     }
 
-    /// <summary>双击树节点（或按回车）→ 重命名文件夹（根目录除外）</summary>
+    /// <summary>双击树节点（或按回车）→ 弹出重命名对话框（根目录除外）。</summary>
     private void OnTreeItemChosen(IEnumerable<object> chosenItems)
     {
         var first = chosenItems.FirstOrDefault();
@@ -230,10 +232,12 @@ public class PrefabManagerWindow : EditorWindow
             ShowRenameDialog(node);
     }
 
-    // ---------- 重命名对话框 ----------
+    // ---------- Rename Dialog ----------
+
+    /// <summary>弹出内联重命名对话框窗口。</summary>
     private void ShowRenameDialog(FolderNode node)
     {
-        var window = EditorWindow.GetWindow<RenamerWindow>(true, "重命名文件夹", true);
+        var window = EditorWindow.GetWindow<RenamerWindow>(true, "Rename Folder", true);
         window.Init(node, (newName) =>
         {
             if (!string.IsNullOrEmpty(newName))
@@ -246,6 +250,7 @@ public class PrefabManagerWindow : EditorWindow
         window.Show();
     }
 
+    /// <summary>重命名对话框内部窗口类。</summary>
     private class RenamerWindow : EditorWindow
     {
         private string newName;
@@ -264,107 +269,78 @@ public class PrefabManagerWindow : EditorWindow
         private void OnGUI()
         {
             EditorGUILayout.Space(10);
-            newName = EditorGUILayout.TextField("新名称", newName);
+            newName = EditorGUILayout.TextField("New Name", newName);
             EditorGUILayout.Space(5);
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("确定"))
+            if (GUILayout.Button("OK"))
             {
                 onRename?.Invoke(newName);
                 Close();
             }
 
-            if (GUILayout.Button("取消"))
+            if (GUILayout.Button("Cancel"))
                 Close();
             EditorGUILayout.EndHorizontal();
         }
     }
 
     // ============================================================
-    //  列表视图（右侧预制体列表）
+    //  List View (右侧预制体列表)
     // ============================================================
+
     /// <summary>
-    /// 刷新列表：使用 ScrollView + 手动构建，以精确控制间距和斑马纹。
-    /// 坑点：
-    ///   1. ListView 的 margin 无法产生行间距，需用 ScrollView 手动构建。
-    ///   2. 斑马纹闭包问题：将奇偶标志存入 item.userData，避免循环变量引用错误。
-    ///   3. 样式兼容性：borderRadius、borderWidth 等需用独立属性（如 borderTopLeftRadius）。
+    /// 刷新右侧预制体列表。使用 ScrollView + 手动构建以获得精确的行间距和斑马纹效果。
     /// </summary>
-   private void RefreshListView()
-{
-    if (currentFolder == null) return;
-
-    // 移除旧的 ScrollView
-    var oldScrollView = listContainer.Q<ScrollView>("prefabScrollView");
-    if (oldScrollView != null)
-        oldScrollView.RemoveFromHierarchy();
-
-    var scrollView = new ScrollView();
-    scrollView.name = "prefabScrollView";
-    scrollView.style.flexGrow = 1;
-    scrollView.style.paddingTop = 4;
-    scrollView.style.paddingBottom = 4;
-
-    var contentContainer = new VisualElement();
-    contentContainer.style.flexDirection = FlexDirection.Column;
-    contentContainer.style.width = Length.Percent(100);
-
-    int index = 0;
-    foreach (var entry in currentFolder.prefabs)
+    private void RefreshListView()
     {
-        // 克隆模板
-        VisualElement item = itemTemplate.CloneTree();
+        if (currentFolder == null) return;
 
-        // 处理 TemplateContainer 包装（如果有）
-        if (item is TemplateContainer container && container.childCount > 0)
-            item = container[0];
+        var oldScrollView = listContainer.Q<ScrollView>("prefabScrollView");
+        if (oldScrollView != null)
+            oldScrollView.RemoveFromHierarchy();
 
-        // ---------- 强制样式（确保间距和圆角生效） ----------
-        item.style.height = 44;
-        item.style.marginBottom = 4;
-        item.style.paddingLeft = 8;
-        item.style.paddingRight = 8;
+        var scrollView = new ScrollView();
+        scrollView.name = "prefabScrollView";
+        scrollView.style.flexGrow = 1;
+        scrollView.style.paddingTop = 4;
+        scrollView.style.paddingBottom = 4;
 
-        // ---------- 斑马纹（增强对比度） ----------
-        bool isEven = (index % 2 == 0);
-        item.userData = isEven;
-        if (isEven)
-            item.style.backgroundColor = new Color(0.27f, 0.27f, 0.27f); // #454545
-        else
-            item.style.backgroundColor = new Color(0.20f, 0.20f, 0.20f); // #333333
+        var contentContainer = new VisualElement();
+        contentContainer.style.flexDirection = FlexDirection.Column;
+        contentContainer.style.width = Length.Percent(100);
 
-        // ---------- 绑定数据 ----------
-        var icon = item.Q<Image>("item-icon");
-        var label = item.Q<Label>("item-name");
-        label.text = entry.name;
-
-        // 获取缩略图
-        Texture2D preview = null;
-        if (entry.prefab != null)
+        int index = 0;
+        foreach (var entry in currentFolder.prefabs)
         {
-            preview = AssetPreview.GetAssetPreview(entry.prefab);
-            if (preview == null)
-                preview = AssetPreview.GetMiniThumbnail(entry.prefab);
-        }
-        else if (!string.IsNullOrEmpty(entry.guid))
-        {
-            var path = AssetDatabase.GUIDToAssetPath(entry.guid);
-            var obj = AssetDatabase.LoadAssetAtPath<Object>(path);
-            if (obj != null)
-            {
-                preview = AssetPreview.GetAssetPreview(obj);
-                if (preview == null)
-                    preview = AssetPreview.GetMiniThumbnail(obj);
-            }
-        }
-        icon.image = preview;
+            VisualElement item = itemTemplate.CloneTree();
 
-        // ---------- 点击聚焦 ----------
-        item.RegisterCallback<MouseDownEvent>(evt =>
-        {
+            if (item is TemplateContainer container && container.childCount > 0)
+                item = container[0];
+
+            item.style.height = 44;
+            item.style.marginBottom = 4;
+            item.style.paddingLeft = 8;
+            item.style.paddingRight = 8;
+
+            // 斑马纹：偶数行深灰，奇数行稍浅
+            bool isEven = (index % 2 == 0);
+            item.userData = isEven;
+            if (isEven)
+                item.style.backgroundColor = new Color(0.27f, 0.27f, 0.27f);
+            else
+                item.style.backgroundColor = new Color(0.20f, 0.20f, 0.20f);
+
+            var icon = item.Q<Image>("item-icon");
+            var label = item.Q<Label>("item-name");
+            label.text = entry.name;
+
+            // 获取预制体缩略图
+            Texture2D preview = null;
             if (entry.prefab != null)
             {
-                EditorGUIUtility.PingObject(entry.prefab);
-                Selection.activeObject = entry.prefab;
+                preview = AssetPreview.GetAssetPreview(entry.prefab);
+                if (preview == null)
+                    preview = AssetPreview.GetMiniThumbnail(entry.prefab);
             }
             else if (!string.IsNullOrEmpty(entry.guid))
             {
@@ -372,58 +348,79 @@ public class PrefabManagerWindow : EditorWindow
                 var obj = AssetDatabase.LoadAssetAtPath<Object>(path);
                 if (obj != null)
                 {
-                    EditorGUIUtility.PingObject(obj);
-                    Selection.activeObject = obj;
+                    preview = AssetPreview.GetAssetPreview(obj);
+                    if (preview == null)
+                        preview = AssetPreview.GetMiniThumbnail(obj);
                 }
             }
-        });
+            icon.image = preview;
 
-        // ---------- 悬停效果 ----------
-        item.RegisterCallback<MouseEnterEvent>(evt =>
-        {
-            item.style.backgroundColor = new Color(0.34f, 0.34f, 0.34f); // #575757
-        });
-        item.RegisterCallback<MouseLeaveEvent>(evt =>
-        {
-            bool even = (bool)item.userData;
-            if (even)
-                item.style.backgroundColor = new Color(0.27f, 0.27f, 0.27f);
-            else
-                item.style.backgroundColor = new Color(0.20f, 0.20f, 0.20f);
-        });
+            // 点击 → 聚焦到 Project 窗口并选中
+            item.RegisterCallback<MouseDownEvent>(evt =>
+            {
+                if (entry.prefab != null)
+                {
+                    EditorGUIUtility.PingObject(entry.prefab);
+                    Selection.activeObject = entry.prefab;
+                }
+                else if (!string.IsNullOrEmpty(entry.guid))
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(entry.guid);
+                    var obj = AssetDatabase.LoadAssetAtPath<Object>(path);
+                    if (obj != null)
+                    {
+                        EditorGUIUtility.PingObject(obj);
+                        Selection.activeObject = obj;
+                    }
+                }
+            });
 
-        contentContainer.Add(item);
-        index++;
+            // 悬停高亮效果
+            item.RegisterCallback<MouseEnterEvent>(evt =>
+            {
+                item.style.backgroundColor = new Color(0.34f, 0.34f, 0.34f);
+            });
+            item.RegisterCallback<MouseLeaveEvent>(evt =>
+            {
+                bool even = (bool)item.userData;
+                if (even)
+                    item.style.backgroundColor = new Color(0.27f, 0.27f, 0.27f);
+                else
+                    item.style.backgroundColor = new Color(0.20f, 0.20f, 0.20f);
+            });
+
+            contentContainer.Add(item);
+            index++;
+        }
+
+        // 空列表提示
+        if (index == 0)
+        {
+            var emptyLabel = new Label("No prefabs in this folder");
+            emptyLabel.style.color = new Color(0.5f, 0.5f, 0.5f);
+            emptyLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
+            emptyLabel.style.fontSize = 16;
+            emptyLabel.style.paddingTop = 40;
+            contentContainer.Add(emptyLabel);
+        }
+
+        scrollView.Add(contentContainer);
+        listContainer.Add(scrollView);
+
+        if (folderInfoLabel != null)
+            folderInfoLabel.text = $"{currentFolder.name} · {currentFolder.prefabs.Count} items";
     }
 
-    // 空列表提示
-    if (index == 0)
-    {
-        var emptyLabel = new Label("此文件夹中没有预制体");
-        emptyLabel.style.color = new Color(0.5f, 0.5f, 0.5f);
-        emptyLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
-        emptyLabel.style.fontSize = 16;
-        emptyLabel.style.paddingTop = 40;
-        contentContainer.Add(emptyLabel);
-    }
-
-    scrollView.Add(contentContainer);
-    listContainer.Add(scrollView);
-
-    // 更新信息标签
-    if (folderInfoLabel != null)
-        folderInfoLabel.text = $"{currentFolder.name} · {currentFolder.prefabs.Count} 项";
-}
-
     // ============================================================
-    //  新建文件夹
+    //  New Folder
     // ============================================================
+
+    /// <summary>点击新建文件夹按钮。在列表顶部插入一个内联输入行。</summary>
     private void OnNewFolderClicked()
     {
         if (isCreatingFolder || currentFolder == null) return;
         isCreatingFolder = true;
 
-        // 创建输入行容器，强制宽度为 100%
         newFolderRow = new VisualElement();
         newFolderRow.AddToClassList("new-folder-row");
         newFolderRow.style.width = Length.Percent(100);
@@ -435,9 +432,9 @@ public class PrefabManagerWindow : EditorWindow
         newFolderInput = new TextField();
         newFolderInput.AddToClassList("input");
         newFolderInput.focusable = true;
-        // 限制输入框最大宽度，防止溢出
         newFolderInput.style.maxWidth = Length.Percent(100);
         newFolderInput.style.flexShrink = 1;
+        // Enter 确认，Escape 取消
         newFolderInput.RegisterCallback<KeyDownEvent>(evt =>
         {
             if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
@@ -455,18 +452,18 @@ public class PrefabManagerWindow : EditorWindow
         cancelBtn.AddToClassList("cancel-btn");
         newFolderRow.Add(cancelBtn);
 
-        // 插入到 listContainer 顶部（注意：listContainer 是 flex 容器，宽度由父级决定）
         listContainer.Insert(0, newFolderRow);
         newFolderInput.Focus();
         newFolderInput.SelectAll();
     }
 
+    /// <summary>确认创建文件夹。</summary>
     private void ConfirmNewFolder()
     {
         string name = newFolderInput.value.Trim();
         if (string.IsNullOrEmpty(name))
         {
-            EditorUtility.DisplayDialog("提示", "文件夹名称不能为空", "确定");
+            EditorUtility.DisplayDialog("Notice", "Folder name cannot be empty.", "OK");
             return;
         }
 
@@ -481,19 +478,21 @@ public class PrefabManagerWindow : EditorWindow
         CleanupNewFolderRow();
 
         RefreshTreeView();
-        currentFolder = newFolder; // 自动进入新文件夹
+        currentFolder = newFolder;
         RefreshListView();
-        RefreshTreeView(); // 高亮新文件夹
+        RefreshTreeView();
 
         isCreatingFolder = false;
     }
 
+    /// <summary>取消创建文件夹。</summary>
     private void CancelNewFolder()
     {
         CleanupNewFolderRow();
         isCreatingFolder = false;
     }
 
+    /// <summary>移除内联输入行。</summary>
     private void CleanupNewFolderRow()
     {
         if (newFolderRow != null && newFolderRow.parent != null)
@@ -505,14 +504,12 @@ public class PrefabManagerWindow : EditorWindow
     }
 
     // ============================================================
-    //  拖拽导入预制体
+    //  Drag & Drop
     // ============================================================
+
     /// <summary>
-    /// 设置拖拽事件，支持从 Project 窗口拖拽预制体到列表区域。
-    /// 坑点：
-    ///   1. 必须调用 DragAndDrop.AcceptDrag() 才能触发 DragPerform。
-    ///   2. 使用 TrickleDown 确保事件在冒泡前捕获。
-    ///   3. 设置 DragAndDrop.visualMode 控制鼠标图标。
+    /// 设置拖拽事件。支持从 Project 窗口拖拽预制体到列表区域来导入。
+    /// 使用 TrickleDown 确保在冒泡前捕获事件。
     /// </summary>
     private void SetupDragDrop()
     {
@@ -534,7 +531,6 @@ public class PrefabManagerWindow : EditorWindow
 
         listContainer.RegisterCallback<DragUpdatedEvent>(evt =>
         {
-            // 检查是否包含预制体
             bool hasPrefab = false;
             foreach (var obj in DragAndDrop.objectReferences)
             {
@@ -556,7 +552,6 @@ public class PrefabManagerWindow : EditorWindow
 
         listContainer.RegisterCallback<DragPerformEvent>(evt =>
         {
-            // 必须接受拖拽，否则 DragPerform 不会触发
             DragAndDrop.AcceptDrag();
 
             listContainer.EnableInClassList("drag-over", false);
@@ -591,28 +586,20 @@ public class PrefabManagerWindow : EditorWindow
             if (added)
             {
                 RefreshListView();
-                RefreshTreeView(); // 更新文件夹计数
+                RefreshTreeView();
             }
 
             evt.StopPropagation();
         }, TrickleDown.TrickleDown);
     }
 
-    // ============================================================
-    //  刷新（手动调用）
-    // ============================================================
     private void OnRefresh()
     {
         RefreshTreeView();
         RefreshListView();
     }
 
-    // ============================================================
-    //  生命周期清理
-    // ============================================================
     private void OnDisable()
     {
-        // 注意：由于我们使用 ScrollView 手动构建，不再需要取消 ListView 事件。
-        // 如无特殊资源，可留空。
     }
 }

@@ -4,7 +4,9 @@ using VoyageForge.UIKit.Runtime;
 namespace VoyageForge.UIKit.Samples
 {
     /// <summary>
-    /// 示例输入处理 — 把所有按键转发给 UIManager，由活跃面板自己决定怎么处理。
+    /// 示例输入处理器。将所有按键事件转发给 UIManager，
+    /// 由当前活跃面板自行决定如何处理。
+    /// 支持的按键：Enter, Escape, Y, N, 方向键, Tab。
     /// </summary>
     public class UIInputHandler : MonoBehaviour
     {
@@ -22,6 +24,7 @@ namespace VoyageForge.UIKit.Samples
             }
         }
 
+        /// <summary>需要监听的按键列表。</summary>
         private static readonly KeyCode[] _keys =
         {
             KeyCode.Return, KeyCode.KeypadEnter, KeyCode.Escape,

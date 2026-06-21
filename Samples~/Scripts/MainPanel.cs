@@ -5,16 +5,18 @@ using VoyageForge.UIKit.Runtime;
 
 namespace VoyageForge.UIKit.Samples
 {
-    /// <summary> 主菜单面板 — FullPanel，可压栈导航。 </summary>
+    /// <summary>
+    /// 示例主菜单面板（FullPanel）。演示 FullPanel 导航栈用法：
+    /// 按钮打开 SettingsPanel 或 ConfirmDialog，均为 FullPanel 压栈导航。
+    /// </summary>
     [PanelPath("UI/Samples/Resources/MainPanel")]
-    public  class MainPanel : FullPanel
+    public class MainPanel : FullPanel
     {
         private Button _settingsButton;
         private Button _dialogButton;
 
         protected override UniTask OnCreate()
         {
-            // 仅一次：获取组件引用
             var buttons = GetComponentsInChildren<Button>();
             _settingsButton = System.Array.Find(buttons, b => b.name == "SettingsButton");
             _dialogButton = System.Array.Find(buttons, b => b.name == "DialogButton");
@@ -22,24 +24,24 @@ namespace VoyageForge.UIKit.Samples
             if (_settingsButton != null)
                 _settingsButton.onClick.AddListener(async () =>
                 {
-                    var panel = await UIManager.Instance.GetPanelAsync<SettingsPanel>();
+                    // FullPanel 导航：GetAsync 加载 + ShowSelfAsync 压栈
+                    var panel = await UIManager.Panel.GetPanel<SettingsPanel>();
                     await panel.ShowSelfAsync();
                 });
 
             if (_dialogButton != null)
                 _dialogButton.onClick.AddListener(async () =>
                 {
-                    var panel = await UIManager.Instance.GetPanelAsync<ConfirmDialog>();
+                    var panel = await UIManager.Panel.GetPanel<ConfirmDialog>();
                     await panel.ShowSelfAsync();
                 });
 
-            
             return UniTask.CompletedTask;
         }
 
         protected override UniTask OnShow()
         {
-            Debug.Log("[MainPanel] 显示主面板");
+            Debug.Log("[MainPanel] Showing main panel");
             return UniTask.CompletedTask;
         }
 

@@ -9,8 +9,8 @@ using VoyageForge.UIKit.Runtime;
 namespace VoyageForge.UIKit.Tests
 {
     /// <summary>
-    /// UIManager 集成测试 — 验证 GetPanel/PushAsync/HideAsync/PanelProvider 热切换。
-    /// 需要管理 MonoSingleton 的静态状态防止测试间交叉影响。
+    /// UIManager integration tests — GetPanel/PushAsync/PopAsync/PanelProvider hot-swap.
+    /// Manages MonoSingleton static state to prevent cross-test interference.
     /// </summary>
     public class UIManagerTests
     {
@@ -21,7 +21,7 @@ namespace VoyageForge.UIKit.Tests
         public void SetUp()
         {
             _provider = new TestPanelProvider();
-            UIManager.PanelProvider = _provider;
+            UIManager.Panel.Provider = _provider;
         }
 
         [TearDown]
@@ -30,7 +30,8 @@ namespace VoyageForge.UIKit.Tests
             if (_go1 != null) Object.DestroyImmediate(_go1);
             if (_go2 != null) Object.DestroyImmediate(_go2);
 
-            var instance = UIManager.Instance;
+            // Use FindObjectOfType to avoid creating a new UIManager just to destroy it
+            var instance = Object.FindObjectOfType<UIManager>();
             if (instance != null)
             {
                 Object.DestroyImmediate(instance.gameObject);
@@ -39,23 +40,31 @@ namespace VoyageForge.UIKit.Tests
         }
 
         /// <summary>
-        /// 重置 MonoSingleton 静态字段以免测试间交叉污染。
+        /// Reset MonoSingleton static fields and Panel/Popup references
+        /// to prevent cross-test interference.
         /// </summary>
         private static void ClearSingleton()
         {
             var baseType = typeof(UIManager).BaseType;
-            var field = baseType?.GetField("_instance",
+
+            var instanceField = baseType?.GetField("_instance",
                 BindingFlags.NonPublic | BindingFlags.Static);
-            field?.SetValue(null, null);
+            instanceField?.SetValue(null, null);
 
             var quitField = baseType?.GetField("_applicationIsQuitting",
                 BindingFlags.NonPublic | BindingFlags.Static);
             quitField?.SetValue(null, false);
+
+            // Reset Panel/Popup static fields on UIManager itself
+            var panelField = typeof(UIManager).GetField("_panel",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            panelField?.SetValue(null, null);
+
+            var popupField = typeof(UIManager).GetField("_popup",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            popupField?.SetValue(null, null);
         }
 
-        /// <summary>
-        /// GetPanel + ShowSelfAsync 应返回对应面板实例，State=Active。
-        /// </summary>
         [UnityTest]
         public IEnumerator GetPanel_ShowSelf_ReturnsPanel_Active() => UniTask.ToCoroutine(async () =>
         {
@@ -63,7 +72,7 @@ namespace VoyageForge.UIKit.Tests
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            var result = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
+            var result = await UIManager.Panel.GetPanel<TestFullPanel>();
             await result.ShowSelfAsync();
 
             Assert.IsNotNull(result);
@@ -71,9 +80,6 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreEqual(BasePanel.PanelState.Active, panel.State);
         });
 
-        /// <summary>
-        /// Push 两个不同类型面板 → HideAsync → 栈顶出栈，下层 Resume。
-        /// </summary>
         [UnityTest]
         public IEnumerator HideAsync_PopsAndResumes() => UniTask.ToCoroutine(async () =>
         {
@@ -85,23 +91,20 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(panelA);
             _provider.Register(panelB);
 
-            var a = await UIManager.Instance.GetPanelAsync<TestFullPanelA>();
+            var a = await UIManager.Panel.GetPanel<TestFullPanelA>();
             await a.ShowSelfAsync();
-            var b = await UIManager.Instance.GetPanelAsync<TestFullPanelB>();
+            var b = await UIManager.Panel.GetPanel<TestFullPanelB>();
             await b.ShowSelfAsync();
 
             Assert.AreEqual(BasePanel.PanelState.Paused, panelA.State);
             Assert.AreEqual(BasePanel.PanelState.Active, panelB.State);
 
-            await UIManager.Instance.HideAsync();
+            await UIManager.Panel.PopAsync();
 
             Assert.AreEqual(BasePanel.PanelState.Active, panelA.State);
             Assert.AreEqual(BasePanel.PanelState.Inactive, panelB.State);
         });
 
-        /// <summary>
-        /// 运行时切换 PanelProvider → 旧缓存自动迁移到新 Provider。
-        /// </summary>
         [UnityTest]
         public IEnumerator PanelProviderSwap_CacheMigrated() => UniTask.ToCoroutine(async () =>
         {
@@ -109,20 +112,17 @@ namespace VoyageForge.UIKit.Tests
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            var loaded = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
+            var loaded = await UIManager.Panel.GetPanel<TestFullPanel>();
             await loaded.ShowSelfAsync();
-            await UIManager.Instance.HideAsync();
+            await UIManager.Panel.PopAsync();
 
             var newProvider = new TestPanelProvider();
-            UIManager.PanelProvider = newProvider;
+            UIManager.Panel.Provider = newProvider;
 
             Assert.IsTrue(newProvider.TryGet(typeof(TestFullPanel), out var cached));
             Assert.AreSame(panel, cached);
         });
 
-        /// <summary>
-        /// HideAsync() 返回被 Pop 的栈顶面板实例。
-        /// </summary>
         [UnityTest]
         public IEnumerator HideAsync_ReturnsPoppedPanel() => UniTask.ToCoroutine(async () =>
         {
@@ -130,17 +130,14 @@ namespace VoyageForge.UIKit.Tests
             var panel = _go1.AddComponent<TestFullPanel>();
             _provider.Register(panel);
 
-            var loaded = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
+            var loaded = await UIManager.Panel.GetPanel<TestFullPanel>();
             await loaded.ShowSelfAsync();
-            var result = await UIManager.Instance.HideAsync();
+            var result = await UIManager.Panel.PopAsync();
 
             Assert.IsNotNull(result);
             Assert.AreSame(panel, result);
         });
 
-        /// <summary>
-        /// ABA: Push<A> → Push<B> → 重新注册 A → Push<A> → Push 检测 ABA 并拒绝，栈保持 [A, B]。
-        /// </summary>
         [UnityTest]
         public IEnumerator PushAsync_ABA_Rejected() => UniTask.ToCoroutine(async () =>
         {
@@ -152,19 +149,60 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(panelA);
             _provider.Register(panelB);
 
-            var a = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
-            await a.ShowSelfAsync();                              // [A]
-            var b = await UIManager.Instance.GetPanelAsync<TestFullPanelA>();
-            await b.ShowSelfAsync();                              // [A, B]
+            var a = await UIManager.Panel.GetPanel<TestFullPanel>();
+            await a.ShowSelfAsync();
+            var b = await UIManager.Panel.GetPanel<TestFullPanelA>();
+            await b.ShowSelfAsync();
 
-            // 重新注册 A 到 Provider（模拟 A 在缓存中可用）
             _provider.Register(panelA);
-            LogAssert.Expect(LogType.Error, "[ViewStack] 不允许 ABA: TestFullPanel 已在栈中，不能重复 Push");
-            var a2 = await UIManager.Instance.GetPanelAsync<TestFullPanel>();
-            await a2.ShowSelfAsync();                             // ABA → Push 报错
+            LogAssert.Expect(LogType.Error, "[ViewStack] ABA rejected: TestFullPanel is already in the stack.");
+            var a2 = await UIManager.Panel.GetPanel<TestFullPanel>();
+            await a2.ShowSelfAsync();
 
-            Assert.IsNotNull(a2, "GetPanel 成功返回 panel，但 Push 因 ABA 拒绝压栈");
-            Assert.AreEqual(BasePanel.PanelState.Active, panelB.State, "B 仍在栈顶 Active");
+            Assert.IsNotNull(a2);
+            Assert.AreEqual(BasePanel.PanelState.Active, panelB.State);
+        });
+
+        /// <summary>
+        /// GetPanel twice without Show returns the same cached instance (cache not consumed).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GetPanel_Twice_ReturnsSameInstance() => UniTask.ToCoroutine(async () =>
+        {
+            _go1 = new GameObject("TestPanel");
+            var panel = _go1.AddComponent<TestFullPanel>();
+            _provider.Register(panel);
+
+            var a1 = await UIManager.Panel.GetPanel<TestFullPanel>();
+            var a2 = await UIManager.Panel.GetPanel<TestFullPanel>();
+
+            Assert.IsNotNull(a1);
+            Assert.AreSame(a1, a2, "GetPanel twice should return the same instance (cache not consumed)");
+
+            // After Show, cache is consumed
+            await a1.ShowSelfAsync();
+
+            var a3 = await UIManager.Panel.GetPanel<TestFullPanel>();
+            Assert.IsNull(a3, "After Show, cache should be empty; GetPanel returns null");
+        });
+
+        /// <summary>
+        /// GetPanel → Show → Pop → GetPanel returns the re-cached instance.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GetPanel_AfterShowAndPop_RecyclesCache() => UniTask.ToCoroutine(async () =>
+        {
+            _go1 = new GameObject("TestPanel");
+            var panel = _go1.AddComponent<TestFullPanel>();
+            _provider.Register(panel);
+
+            var a1 = await UIManager.Panel.GetPanel<TestFullPanel>();
+            await a1.ShowSelfAsync();
+            await UIManager.Panel.PopAsync(); // Hide → Release back to cache
+
+            var a2 = await UIManager.Panel.GetPanel<TestFullPanel>();
+            Assert.IsNotNull(a2);
+            Assert.AreSame(a1, a2, "After Pop, panel should be re-cached and GetPanel returns same instance");
         });
     }
 }

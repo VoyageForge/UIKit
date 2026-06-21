@@ -1,137 +1,72 @@
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using VoyageForge.Depot.Runtime.Utilities;
 
 namespace VoyageForge.UIKit.Runtime
 {
+    /// <summary>
+    /// UIKit 总入口 — MonoSingleton 服务容器。
+    /// 持有 FullPanelManager（导航栈）和 PopupManager（弹窗管理）两个内置管理器。
+    /// 支持通过 Get&lt;T&gt;() 注册用户自定义管理器扩展。
+    /// </summary>
     public class UIManager : MonoSingleton<UIManager>
     {
-        [SerializeField] private ViewStack _stack = new();
+        /// <summary>用户自定义管理器字典，按类型存储。</summary>
+        private readonly Dictionary<Type, object> _managers = new();
 
-        private SceneUIContext _sceneContext;
+        private static FullPanelManager _panel;
+        private static PopupManager _popup;
 
-        private readonly PopupManager _popup = new();
-        public static PopupManager Popup => Instance._popup;
-
-        private IPanelProvider _provider = new ResourcesProvider();
-
-        public static IPanelProvider PanelProvider
+        /// <summary>FullPanel 导航栈管理器。首次访问时自动创建 UIManager 实例并初始化。</summary>
+        public static FullPanelManager Panel
         {
-            get => Instance._provider;
-            set
+            get
             {
-                if (Instance._provider != null) value.Import(Instance._provider.Export());
-                Instance._provider = value;
+                if (_panel == null) { _ = Instance; _panel ??= new FullPanelManager(); }
+                return _panel;
             }
+            private set => _panel = value;
         }
 
-        private void OnDestroy() => _stack?.Dispose();
-
-        protected override void OnApplicationQuit() => _stack?.Dispose();
-
-        // ---- 场景上下文 ----
-
-        internal async UniTask RegisterSceneContext(SceneUIContext context)
+        /// <summary>Popup 弹窗管理器。首次访问时自动创建 UIManager 实例并初始化。</summary>
+        public static PopupManager Popup
         {
-            _sceneContext = context;
-            foreach (var entry in context.PreplacedPanels)
+            get
             {
-                if (entry.Panel == null) continue;
-                if (entry.Panel.gameObject.activeSelf)
-                    await PushAsync(entry.Panel);
-                else
-                    PanelProvider.Register(entry.Panel);
+                if (_popup == null) { _ = Instance; _popup ??= new PopupManager(); }
+                return _popup;
             }
+            private set => _popup = value;
         }
 
-        internal async UniTask UnregisterSceneContext()
+        /// <summary>
+        /// 获取或注册自定义管理器。首次访问时创建实例并缓存。
+        /// 要求 T 具有无参构造函数。
+        /// </summary>
+        public static T Get<T>() where T : class, new()
         {
-            if (_sceneContext == null) return;
-
-            foreach (var entry in _sceneContext.PreplacedPanels)
-                PanelProvider.Remove(entry.Panel.GetType());
-
-            if (_stack != null)
-                while (_stack.Count > 0)
-                {
-                    var panel = _stack.Peek();
-                    if (panel == null) break;
-                    if (_sceneContext.PreplacedPanels.Any(p => p.Panel == panel))
-                        await _stack.Pop();
-                    else
-                        return;
-                }
-        }
-
-        // ---- 公开 API ----
-
-        /// <summary> 异步加载 FullPanel，完成后回调（不自动显示）。 </summary>
-        public async UniTask GetPanel<T>(Action<T> onLoaded) where T : FullPanel
-        {
-            var panel = await GetPanelAsync<T>();
-            onLoaded?.Invoke(panel);
-        }
-
-        /// <summary> 从 Provider 加载 FullPanel（不自动显示，需手动调用 ShowSelfAsync）。 </summary>
-        public async UniTask<T> GetPanelAsync<T>() where T : FullPanel
-        {
-            var panel = await PanelProvider.LoadAsync<T>();
-            if (panel == null)
-                Debug.LogError($"[UIManager] GetPanelAsync failed: {typeof(T).Name}");
-            return panel;
-        }
-
-        /// <summary> 将 FullPanel 压入导航栈并显示。 </summary>
-        public async UniTask PushAsync(FullPanel panel)
-        {
-            if (panel == null) return;
-            await _stack.Push(panel);
-        }
-
-        /// <summary> 隐藏栈顶（异步）。 </summary>
-        public async UniTask<FullPanel> HideAsync()
-        {
-            var panel = await _stack.Pop();
-            PanelProvider.Release(panel);
-            return panel;
-        }
-
-        /// <summary> 隐藏指定 FullPanel（异步）。 </summary>
-        public async UniTask<FullPanel> HideAsync(FullPanel panel)
-        {
-            var top = _stack.Peek();
-
-            if (top == panel)
+            var type = typeof(T);
+            if (!Instance._managers.TryGetValue(type, out var mgr))
             {
-                return await HideAsync();
+                mgr = new T();
+                Instance._managers[type] = mgr;
             }
-            else
-            {
-                await panel.Hide();
-                if (top != null) await top.Resume();
-
-                PanelProvider.Register(panel);
-                return panel;
-            }
+            return mgr as T;
         }
 
-        /// <summary> 获取栈顶面板。 </summary>
-        public FullPanel GetActivePanel() => _stack.Count > 0 ? _stack.Peek() : null;
+       
 
-        /// <summary> 输入路由。 </summary>
-        public bool OnInput(KeyCode key, bool down)
+        private void OnDestroy()
         {
-            var top = _stack.Peek();
-            return top != null && top.State == BasePanel.PanelState.Active && top.OnInput(key, down);
+            _panel?.Dispose();
+            _popup?.Dispose();
+            _panel = null;
+            _popup = null;
         }
 
-        /// <summary> 关闭面板（异步）。 </summary>
-        public async UniTask CloseAsync(BasePanel panel)
-        {
-            if (_stack.Peek() == panel) await _stack.Pop();
-            await panel.Close();
-        }
+        /// <summary>输入路由。将按键事件转发给 FullPanelManager，由栈顶活跃面板处理。</summary>
+        public bool OnInput(KeyCode key, bool down) => Panel.OnInput(key, down);
     }
 }
