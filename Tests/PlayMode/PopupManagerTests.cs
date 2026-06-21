@@ -8,7 +8,7 @@ using VoyageForge.UIKit.Runtime;
 namespace VoyageForge.UIKit.Tests
 {
     /// <summary>
-    /// PopupManager 弹窗管理测试 — 重点覆盖多弹窗 List 行为及 Provider 热切换。
+    /// PopupManager tests — multi-popup list behavior and Provider hot-swap.
     /// </summary>
     public class PopupManagerTests
     {
@@ -30,19 +30,16 @@ namespace VoyageForge.UIKit.Tests
                 Object.DestroyImmediate(_provider.Root.gameObject);
         }
 
-        // ==================== 基础 Show / Hide / Close ====================
+        // ==================== Basic Show / Hide / Close ====================
 
-        /// <summary>
-        /// GetPopup + ShowSelfAsync 创建并显示弹窗 → State=Active，OnCreate+OnShow 触发。
-        /// </summary>
         [UnityTest]
         public IEnumerator GetPopup_ShowSelf_CreatesAndShows() => UniTask.ToCoroutine(async () =>
         {
             var popup = CreatePopup();
             _provider.Register(popup);
 
-            var result = await _manager.GetPopupAsync<TestPopupPanel>();
-            await _manager.ShowPopupAsync(result);
+            var result = await _manager.GetPopup<TestPopupPanel>();
+            await _manager.ShowAsync(result);
 
             Assert.IsNotNull(result);
             Assert.AreEqual(BasePanel.PanelState.Active, result.State);
@@ -50,15 +47,12 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreEqual(1, result.OnShowCount);
         });
 
-        /// <summary>
-        /// Hide 后将弹窗回收到 Provider 缓存中，可再次取出。
-        /// </summary>
         [UnityTest]
         public IEnumerator HideAsync_Caches() => UniTask.ToCoroutine(async () =>
         {
             var popup = CreatePopup();
             _provider.Register(popup);
-            await _manager.ShowPopupAsync(popup);
+            await _manager.ShowAsync(popup);
 
             await _manager.HideAsync(popup);
 
@@ -68,15 +62,12 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreSame(popup, cached);
         });
 
-        /// <summary>
-        /// Close 销毁弹窗 → OnClose 触发，gameObject 被 Destroy。
-        /// </summary>
         [UnityTest]
         public IEnumerator CloseAsync_Destroys() => UniTask.ToCoroutine(async () =>
         {
             var popup = CreatePopup();
             _provider.Register(popup);
-            await _manager.ShowPopupAsync(popup);
+            await _manager.ShowAsync(popup);
 
             await _manager.CloseAsync(popup);
             await UniTask.Yield();
@@ -85,11 +76,8 @@ namespace VoyageForge.UIKit.Tests
             Assert.IsTrue(popup == null);
         });
 
-        // ==================== 多弹窗：同类型 / 不同类型 ====================
+        // ==================== Multiple popups: same type / different types ====================
 
-        /// <summary>
-        /// 同类型弹两个 → 两个都 Active，挂在同一个 Root 下。
-        /// </summary>
         [UnityTest]
         public IEnumerator ShowTwo_SameType_BothActive() => UniTask.ToCoroutine(async () =>
         {
@@ -98,23 +86,19 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(popup1);
             _provider.Register(popup2);
 
-            var r1 = await _manager.GetPopupAsync<TestPopupPanel>();
-            await _manager.ShowPopupAsync(r1);
-            var r2 = await _manager.GetPopupAsync<TestPopupPanel>();
-            await _manager.ShowPopupAsync(r2);
+            var r1 = await _manager.GetPopup<TestPopupPanel>();
+            await _manager.ShowAsync(r1);
+            var r2 = await _manager.GetPopup<TestPopupPanel>();
+            await _manager.ShowAsync(r2);
 
             Assert.AreNotSame(r1, r2);
             Assert.AreEqual(BasePanel.PanelState.Active, r1.State);
             Assert.AreEqual(BasePanel.PanelState.Active, r2.State);
 
-
             Assert.AreSame(_provider.Root, r1.transform.parent);
             Assert.AreSame(_provider.Root, r2.transform.parent);
         });
 
-        /// <summary>
-        /// 不同类型各弹一个 → 各自独立 List，互不影响。
-        /// </summary>
         [UnityTest]
         public IEnumerator ShowTwo_DifferentType_SeparateLists() => UniTask.ToCoroutine(async () =>
         {
@@ -123,20 +107,17 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(popupA);
             _provider.Register(popupB);
 
-            var rA = await _manager.GetPopupAsync<TestPopupPanelA>();
-            await _manager.ShowPopupAsync(rA);
-            var rB = await _manager.GetPopupAsync<TestPopupPanelB>();
-            await _manager.ShowPopupAsync(rB);
+            var rA = await _manager.GetPopup<TestPopupPanelA>();
+            await _manager.ShowAsync(rA);
+            var rB = await _manager.GetPopup<TestPopupPanelB>();
+            await _manager.ShowAsync(rB);
 
             Assert.AreEqual(BasePanel.PanelState.Active, rA.State);
             Assert.AreEqual(BasePanel.PanelState.Active, rB.State);
         });
 
-        // ==================== 多弹窗：Hide/Close 其中一个 ====================
+        // ==================== Hide/Close one of multiple popups ====================
 
-        /// <summary>
-        /// 同类型弹两个，Hide 其中一个 → 被 Hide 的变为 Inactive，另一个不受影响。
-        /// </summary>
         [UnityTest]
         public IEnumerator HideOne_SameType_OtherRemains() => UniTask.ToCoroutine(async () =>
         {
@@ -145,8 +126,8 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(popup1);
             _provider.Register(popup2);
 
-            await _manager.ShowPopupAsync(popup1);
-            await _manager.ShowPopupAsync(popup2);
+            await _manager.ShowAsync(popup1);
+            await _manager.ShowAsync(popup2);
 
             await _manager.HideAsync(popup1);
 
@@ -154,9 +135,6 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreEqual(BasePanel.PanelState.Active, popup2.State);
         });
 
-        /// <summary>
-        /// 同类型弹两个，Close 其中一个 → 被销毁，另一个仍 Active。
-        /// </summary>
         [UnityTest]
         public IEnumerator CloseOne_SameType_OtherRemains() => UniTask.ToCoroutine(async () =>
         {
@@ -165,8 +143,8 @@ namespace VoyageForge.UIKit.Tests
             _provider.Register(popup1);
             _provider.Register(popup2);
 
-            await _manager.ShowPopupAsync(popup1);
-            await _manager.ShowPopupAsync(popup2);
+            await _manager.ShowAsync(popup1);
+            await _manager.ShowAsync(popup2);
 
             await _manager.CloseAsync(popup1);
             await UniTask.Yield();
@@ -175,17 +153,48 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreEqual(BasePanel.PanelState.Active, popup2.State);
         });
 
-        // ==================== Provider 热切换 ====================
+        // ==================== GetPopup cache semantics ====================
 
         /// <summary>
-        /// 运行时切换 Provider → 旧缓存迁移到新 Provider，已激活弹窗 Reparent 到新 Root。
+        /// GetPopup twice without Show returns the same cached instance (cache not consumed).
         /// </summary>
+        [UnityTest]
+        public IEnumerator GetPopup_Twice_BeforeShow_ReturnsSameInstance() => UniTask.ToCoroutine(async () =>
+        {
+            var popup = CreatePopup();
+            _provider.Register(popup);
+
+            var p1 = await _manager.GetPopup<TestPopupPanel>();
+            var p2 = await _manager.GetPopup<TestPopupPanel>();
+
+            Assert.IsNotNull(p1);
+            Assert.AreSame(p1, p2, "GetPopup twice should return the same instance (cache not consumed)");
+        });
+
+        /// <summary>
+        /// GetPopup → Show → GetPopup again returns null (cache consumed by Show).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GetPopup_AfterShow_ConsumesCache() => UniTask.ToCoroutine(async () =>
+        {
+            var popup = CreatePopup();
+            _provider.Register(popup);
+
+            var p1 = await _manager.GetPopup<TestPopupPanel>();
+            await _manager.ShowAsync(p1); // Show consumes from cache
+
+            var p2 = await _manager.GetPopup<TestPopupPanel>();
+            Assert.IsNull(p2, "After Show, cache should be empty; GetPopup returns null");
+        });
+
+        // ==================== Provider hot-swap ====================
+
         [UnityTest]
         public IEnumerator ProviderSwitch_MigratesCache() => UniTask.ToCoroutine(async () =>
         {
             var popup = CreatePopup();
             _provider.Register(popup);
-            await _manager.ShowPopupAsync(popup);
+            await _manager.ShowAsync(popup);
             await _manager.HideAsync(popup);
 
             var newProvider = new TestPopupProvider();

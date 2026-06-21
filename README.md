@@ -1,22 +1,22 @@
-# UIKit
+# UIKit v0.2
 
 轻量级 Unity UI 框架，基于 **UGUI + UniTask**。单栈导航 + 独立弹窗管理。Type-safe，零字符串 key。
 
 ## 架构
 
 ```
-UIManager (MonoSingleton)
-  ├── ViewStack           ← FullPanel 导航栈（Pause/Resume）
-  ├── Popup               ← PopupPanel 弹窗管理（Show/Hide/Close，静态）
-  └── PanelProvider       ← FullPanel 工厂（静态，可热替换）
+UIManager (MonoSingleton)          ← 服务容器
+├── Panel (FullPanelManager)       ← FullPanel 导航栈，独立 Provider
+├── Popup (PopupManager)           ← Popup 弹窗管理，独立 Provider
+└── Get<T>()                       ← 用户自定义管理器扩展
 ```
 
 ## 面板类型
 
-| 类型 | 基类 | 压栈 | Pause/Resume | 打开方式 |
+| 类型 | 基类 | 压栈 | Pause/Resume | 加载方式 |
 |------|------|------|-------------|---------|
-| 全屏面板 | `FullPanel` | 是 | 支持 | `UIManager.GetPanelAsync<T>()` + `.ShowSelfAsync()` |
-| 弹窗 | `PopupPanel` | 否 | 无 | `UIManager.Popup.GetPopupAsync<T>()` + `.ShowSelfAsync()` |
+| 全屏面板 | `FullPanel` | 是 | 支持 | `UIManager.Panel.GetPanel<T>()` + `.ShowSelfAsync()` |
+| 弹窗 | `PopupPanel` | 否 | 无 | `UIManager.Popup.GetPopup<T>()` + `.ShowSelfAsync()` |
 
 ---
 
@@ -29,26 +29,22 @@ Inactive → Active ↔ Paused (仅 FullPanel)
                ↘ Exiting → Destroyed (Close)
 ```
 
-### FullPanel 调用链
+### FullPanel 导航流程
 
 ```
-Show<T> → ViewStack.Push:
-  ├── 栈顶同类型 (ABB) → 跳过，防止重复压栈
-  ├── 栈内已有同类型 (ABA) → 报错，不压栈
+GetPanel<T> → 从 Provider 缓存查看（不移除）
+ShowSelfAsync → PushAsync → 缓存取出 → ViewStack.Push:
+  ├── 栈顶同类型 (ABB) → 跳过
+  ├── 栈内已有同类型 (ABA) → 报错
   ├── 当前栈顶.Pause() → OnPause()
   └── panel.Show()
         ├── 首次: OnCreate() → OnShow()
         └── 非首次: OnShow()
 
-Hide() → ViewStack.Pop:
-  ├── 栈顶.Hide() → OnHide() → Provider.Release(缓存)
+PopAsync → ViewStack.Pop:
+  ├── 栈顶.Hide() → OnHide() → Provider.Release(回缓存)
   └── 下层.Resume() → OnResume()
-
-Close(panel):
-  └── panel.Close() → OnClose() → Destroy
 ```
-
-> **导航规则**: 每个 FullPanel 类型在栈中最多出现一次。连续 Push 同类型（ABB）自动跳过；栈内已有同类型再 Push（ABA）报错。
 
 ### 生命周期钩子
 
@@ -60,124 +56,103 @@ Close(panel):
 | `OnClose()` | BasePanel | Close 销毁时 |
 | `OnPause()` | FullPanel | 被覆盖 |
 | `OnResume()` | FullPanel | 恢复 |
-| `OnInput(key,down)` | BasePanel | 输入路由 |
+| `OnInput(key,down)` | BasePanel | 输入路由（Escape 默认 PopAsync） |
 
 ---
 
 ## API
 
+### UIManager.Panel (FullPanelManager)
+
+| 方法 | 返回 | 说明 |
+|------|------|------|
+| `GetPanel<T>(Action<T>)` | `UniTask<T>` | 异步加载面板，回调通知（不自动显示） |
+| `GetPanel<T>()` | `UniTask<T>` | 从 Provider 加载面板（缓存查看，不移除） |
+| `PushAsync(FullPanel)` | `UniTask` | 压入导航栈并显示（从缓存取出） |
+| `PopAsync()` | `UniTask<FullPanel>` | 弹出栈顶，Release 回缓存 |
+| `HideAsync(FullPanel)` | `UniTask` | 隐藏指定面板回缓存 |
+| `CloseAsync(FullPanel)` | `UniTask` | 关闭并销毁面板 |
+| `GetActivePanel()` | `FullPanel?` | 获取栈顶 |
+| `Peek()` | `FullPanel?` | 查看栈顶（不出栈） |
+| `Count` | `int` | 栈中面板数量 |
+| `OnInput(key,down)` | `bool` | 输入路由 |
+| `Provider` | `IPanelProvider` | 加载代理，读写，设值时自动迁移缓存 |
+
+### UIManager.Popup (PopupManager)
+
+| 方法 | 返回 | 说明 |
+|------|------|------|
+| `GetPopup<T>()` | `UniTask<T>` | 加载弹窗（缓存查看，不移除） |
+| `ShowAsync(PopupPanel)` | `UniTask` | 显示弹窗（从缓存取出） |
+| `HideAsync(PopupPanel)` | `UniTask` | 隐藏弹窗回缓存 |
+| `CloseAsync(PopupPanel)` | `UniTask` | 销毁弹窗 |
+| `Provider` | `IPanelProvider` | 弹窗加载代理，读写 |
+
 ### UIManager
 
-| 方法 | 返回 | 说明 |
-|------|------|------|
-| `GetPanel<T>(Action<T>)` | `void` | 异步加载，完成后回调 |
-| `GetPanelAsync<T>()` | `UniTask<T>` | 加载 FullPanel（异步，不自动显示） |
-| `PushAsync(FullPanel)` | `UniTask` | 将实例压入导航栈并显示 |
-| `HideAsync()` | `UniTask<FullPanel>` | 关闭栈顶，返回被关闭的面板 |
-| `HideAsync(FullPanel)` | `UniTask<FullPanel>` | 关闭指定面板，返回被关闭的面板 |
-| `CloseAsync(BasePanel)` | `UniTask` | 销毁面板 |
-| `GetActivePanel()` | `FullPanel?` | 获取栈顶 |
-| `OnInput(key, down)` | `bool` | 输入路由 |
-| `PanelProvider` | `IPanelProvider` | 静态，可读写，设值时自动迁移缓存 |
-| `Popup` | `PopupManager` | 静态 PopupManager 实例 |
-
-### UIManager.Popup
-
-| 方法 | 返回 | 说明 |
-|------|------|------|
-| `GetPopup<T>(Action<T>)` | `void` | 异步加载，完成后回调 |
-| `GetPopupAsync<T>()` | `UniTask<T>` | 加载弹窗（异步，不自动显示） |
-| `ShowPopupAsync(PopupPanel)` | `UniTask` | 显示已有弹窗实例 |
-| `HideAsync(PopupPanel)` | `UniTask` | 隐藏弹窗（回池缓存） |
-| `CloseAsync(PopupPanel)` | `UniTask` | 销毁弹窗 |
+| 成员 | 说明 |
+|------|------|
+| `Panel` | `FullPanelManager` 静态属性（懒初始化） |
+| `Popup` | `PopupManager` 静态属性（懒初始化） |
+| `Get<T>()` | 注册/获取自定义管理器扩展 |
+| `OnInput(key,down)` | 输入路由到 Panel |
 
 ### 面板自管理 (ShowSelf / HideSelf / CloseSelf)
 
-FullPanel 和 PopupPanel 均提供 Self 方法，面板内部可直接调：
-
-| 方法 | 说明 |
-|------|------|
-| `ShowSelf()` / `ShowSelfAsync()` | 显示自身（FullPanel 压栈，PopupPanel 走 PopupManager） |
-| `HideSelf()` / `HideSelfAsync()` | 隐藏自身 |
-| `CloseSelf()` / `CloseSelfAsync()` | 销毁自身 |
-
 ```csharp
-public class MyPanel : FullPanel
-{
-    private void OnConfirm()
-    {
-        // 面板内部操作自身
-        HideSelf();         // 隐藏回池
-        // CloseSelf();     // 销毁
-        // ShowSelf();      // 重新显示
-    }
-}
+// FullPanel 和 PopupPanel 均提供 Self 方法
+ShowSelf() / ShowSelfAsync()    // 显示自身
+HideSelf() / HideSelfAsync()    // 隐藏回池
+CloseSelf() / CloseSelfAsync()  // 销毁自身
 ```
-
-### SceneUIContext
-
-挂载到场景 GameObject，持有预置面板列表。Start 自动注册，OnDestroy 自动注销。
 
 ---
 
-## 快速开始
+## GetPanel 缓存语义
 
-### 1. 创建 FullPanel
+`GetPanel<T>()` / `GetPopup<T>()` **只查看缓存，不移除**。这是 v0.2 的核心设计：
 
-```csharp
-[PanelPath("UI/Panels/ShopPanel")]
-public class ShopPanel : FullPanel
-{
-    protected override UniTask OnCreate() => UniTask.CompletedTask;
-    protected override UniTask OnShow() => UniTask.CompletedTask;
-    protected override UniTask OnHide() => UniTask.CompletedTask;
-    protected override UniTask OnClose() => UniTask.CompletedTask;
-}
+```
+GetPanel<T>() → 缓存查看 ✓（不移除）
+  ↓ 可在显示前做预处理
+ShowSelfAsync() → 缓存取出 ✓ → 显示
+  ↓
+HideSelfAsync() → 缓存放回 ✓
 ```
 
-### 2. 使用
-
 ```csharp
-// 打开面板
-var shopPanel = await UIManager.Instance.GetPanelAsync<ShopPanel>();
-await shopPanel.ShowSelfAsync();
-
-await UIManager.Instance.HideAsync();  // 返回
-
-// 弹窗
-var toast = await UIManager.Popup.GetPopupAsync<ToastPopup>();
-await toast.ShowSelfAsync();
+// 典型用法：获取 → 预处理 → 显示
+var panel = await UIManager.Panel.GetPanel<SettingsPanel>();
+panel.SetData(myData);  // 显示前预处理
+await panel.ShowSelfAsync();
 ```
 
 ---
 
 ## Provider
 
-| 类 | 说明 |
-|----|------|
-| `PanelProviderBase` | FullPanel 抽象基类，子类只需实现 `Instantiate(path)` |
-| `ResourcesProvider` | FullPanel 默认实现，`Resources.Load` |
-| `PopupProviderBase` | Popup 抽象基类，继承 `PanelProviderBase`，管理 Root Canvas |
-| `PopupResourcesProvider` | Popup 默认实现，继承 `PopupProviderBase` |
-| 自定义 | 继承对应基类，15 行写 AB/Addressables 加载器 |
+每个 Manager 有独立的 Provider，通过 `Manager.Provider` 属性访问：
 
 ```csharp
-public class AddressablesProvider : PanelProviderBase
-{
-    protected override BasePanel Instantiate(string path)
-    {
-        var handle = Addressables.LoadAssetAsync<GameObject>(path);
-        return Object.Instantiate(handle.WaitForCompletion()).GetComponent<BasePanel>();
-    }
-}
+// 设置 FullPanel 的加载代理
+UIManager.Panel.Provider = new ResourcesProvider();
 
-// 热替换
-UIManager.PanelProvider = new AddressablesProvider();
+// 设置 Popup 的加载代理
+UIManager.Popup.Provider = new PopupResourcesProvider();
+
+// 热替换（自动迁移缓存）
+UIManager.Panel.Provider = new AddressablesProvider();
 ```
 
-### [PanelPath]
+| 类 | 说明 |
+|----|------|
+| `PanelProviderBase` | FullPanel Provider 抽象基类 |
+| `ResourcesProvider` | FullPanel 默认实现，`Resources.LoadAsync` |
+| `PopupProviderBase` | Popup Provider 抽象基类，管理 Root Canvas |
+| `PopupResourcesProvider` | Popup 默认实现，自动创建 DontDestroyOnLoad Canvas |
+| 自定义 | 继承对应基类，实现 `InstantiateAsync(path)` |
 
-标注非默认加载路径。未标记时 fallback 到 `type.Name`。
+### [PanelPath]
 
 ```csharp
 [PanelPath("UI/Panels/ShopPanel")]
@@ -185,6 +160,42 @@ public class ShopPanel : FullPanel { }
 ```
 
 **VoyageForge > UIKit > Panel Path Window** — 拖入 prefab，一键生成 `[PanelPath]`。
+
+---
+
+## SceneUI
+
+挂载到场景 GameObject，持有预置 `FullPanel` 列表。Start 时自动注册到 `FullPanelManager`，OnDestroy 时注销。
+
+```csharp
+// SceneUI 组件在 Inspector 中配置 SceneUIEntry 列表
+// 每个 SceneUIEntry 引用场景中的一个 FullPanel
+```
+
+---
+
+## 快速开始
+
+```csharp
+// 创建 FullPanel
+[PanelPath("UI/MyPanel")]
+public class MyPanel : FullPanel
+{
+    protected override UniTask OnCreate() { /* 获取组件引用 */ return UniTask.CompletedTask; }
+    protected override UniTask OnShow()  { /* 刷新数据 */ return UniTask.CompletedTask; }
+}
+
+// 显示
+var panel = await UIManager.Panel.GetPanel<MyPanel>();
+await panel.ShowSelfAsync();
+
+// 返回
+await UIManager.Panel.PopAsync();
+
+// 弹窗
+var toast = await UIManager.Popup.GetPopup<ToastPopup>();
+await toast.ShowSelfAsync();
+```
 
 ---
 

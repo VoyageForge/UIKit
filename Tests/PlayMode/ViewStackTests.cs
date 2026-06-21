@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 namespace VoyageForge.UIKit.Tests
 {
     /// <summary>
-    /// ViewStack 导航栈测试 — 验证 FullPanel 的 Push/Pop/Pause/Resume 流程。
+    /// ViewStack navigation tests — Push/Pop/Pause/Resume flow for FullPanels.
     /// </summary>
     public class ViewStackTests
     {
@@ -39,9 +39,6 @@ namespace VoyageForge.UIKit.Tests
             if (_go2 != null) Object.DestroyImmediate(_go2);
         }
 
-        /// <summary>
-        /// Push 单个面板 → Count=1, State=Active, OnCreate/OnShow 各触发一次。
-        /// </summary>
         [UnityTest]
         public IEnumerator PushSingle_ActivatesPanel() => UniTask.ToCoroutine(async () =>
         {
@@ -53,10 +50,6 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreEqual(1, _panel1.OnShowCount);
         });
 
-        /// <summary>
-        /// Push 两个不同类型面板 → 第一个被 Pause，第二个 Active。
-        /// ABB 规则: 同类型不能连续 Push，因此必须用不同类型。
-        /// </summary>
         [UnityTest]
         public IEnumerator PushTwo_PausesFirst() => UniTask.ToCoroutine(async () =>
         {
@@ -75,10 +68,6 @@ namespace VoyageForge.UIKit.Tests
             Object.DestroyImmediate(goB);
         });
 
-        /// <summary>
-        /// Pop → 栈顶 Hide 并出栈，下层 Resume。
-        /// ABB 规则: Push 两个必须不同类型。
-        /// </summary>
         [UnityTest]
         public IEnumerator Pop_ResumesPrevious() => UniTask.ToCoroutine(async () =>
         {
@@ -101,16 +90,13 @@ namespace VoyageForge.UIKit.Tests
             Object.DestroyImmediate(goB);
         });
 
-        /// <summary>
-        /// 空栈 Pop 应抛出 InvalidOperationException。
-        /// </summary>
         [UnityTest]
         public IEnumerator PopEmpty_Throws() => UniTask.ToCoroutine(async () =>
         {
             try
             {
                 await _stack.Pop();
-                Assert.Fail("期望抛出 InvalidOperationException");
+                Assert.Fail("Expected InvalidOperationException");
             }
             catch (InvalidOperationException)
             {
@@ -118,9 +104,6 @@ namespace VoyageForge.UIKit.Tests
             }
         });
 
-        /// <summary>
-        /// Push → Pop → 再次 Push 同一个面板 → OnCreate 只触发一次（面板实例被缓存复用）。
-        /// </summary>
         [UnityTest]
         public IEnumerator PushPopPush_SameInstance_OnCreateOnce() => UniTask.ToCoroutine(async () =>
         {
@@ -128,27 +111,21 @@ namespace VoyageForge.UIKit.Tests
             await _stack.Pop();
             await _stack.Push(_panel1);
 
-            Assert.AreEqual(1, _panel1.OnCreateCount, "OnCreate 只应触发一次");
-            Assert.AreEqual(2, _panel1.OnShowCount, "OnShow 应触发两次");
+            Assert.AreEqual(1, _panel1.OnCreateCount, "OnCreate should fire only once");
+            Assert.AreEqual(2, _panel1.OnShowCount, "OnShow should fire twice");
         });
 
-        /// <summary>
-        /// ABB: 连续 Push 同类型 → 第二次跳过，栈不变。
-        /// </summary>
         [UnityTest]
         public IEnumerator Push_ABB_SkipsDuplicate() => UniTask.ToCoroutine(async () =>
         {
             await _stack.Push(_panel1);
             await _stack.Push(_panel1);
 
-            Assert.AreEqual(1, _stack.Count, "ABB: 同类型不能连续 Push");
-            Assert.AreEqual(1, _panel1.OnShowCount, "OnShow 只应触发一次");
-            Assert.AreEqual(1, _panel1.OnCreateCount, "OnCreate 只应触发一次");
+            Assert.AreEqual(1, _stack.Count);
+            Assert.AreEqual(1, _panel1.OnShowCount);
+            Assert.AreEqual(1, _panel1.OnCreateCount);
         });
 
-        /// <summary>
-        /// ABA: Push A → Push B → Push A → 第三次应报错，栈保持 [A, B]。
-        /// </summary>
         [UnityTest]
         public IEnumerator Push_ABA_LogsError() => UniTask.ToCoroutine(async () =>
         {
@@ -156,20 +133,17 @@ namespace VoyageForge.UIKit.Tests
             var panelB = goB.AddComponent<TestFullPanelA>();
             panelB.gameObject.SetActive(false);
 
-            await _stack.Push(_panel1);       // [A]
-            await _stack.Push(panelB);        // [A, B]
-            LogAssert.Expect(LogType.Error, "[ViewStack] 不允许 ABA: TestFullPanel 已在栈中，不能重复 Push");
-            await _stack.Push(_panel1);       // ABA 报错，不压栈
+            await _stack.Push(_panel1);
+            await _stack.Push(panelB);
+            LogAssert.Expect(LogType.Error, "[ViewStack] ABA rejected: TestFullPanel is already in the stack.");
+            await _stack.Push(_panel1);
 
-            Assert.AreEqual(2, _stack.Count, "ABA 被拒绝，栈应保持 2 个 entry");
-            Assert.AreSame(panelB, _stack.Peek(), "栈顶仍为 B");
+            Assert.AreEqual(2, _stack.Count, "ABA rejected, stack should still have 2 entries");
+            Assert.AreSame(panelB, _stack.Peek());
 
             Object.DestroyImmediate(goB);
         });
 
-        /// <summary>
-        /// ABA 深层嵌套: Push A → Push B → Push C → Push A → 第四次应报错（A 在栈底，深度 2）。
-        /// </summary>
         [UnityTest]
         public IEnumerator Push_ABA_DeepNesting_LogsError() => UniTask.ToCoroutine(async () =>
         {
@@ -180,40 +154,34 @@ namespace VoyageForge.UIKit.Tests
             var panelC = goC.AddComponent<TestFullPanelB>();
             panelC.gameObject.SetActive(false);
 
-            await _stack.Push(_panel1);    // [A]
-            await _stack.Push(panelB);     // [A, B]
-            await _stack.Push(panelC);     // [A, B, C]
+            await _stack.Push(_panel1);
+            await _stack.Push(panelB);
+            await _stack.Push(panelC);
 
-            LogAssert.Expect(LogType.Error, "[ViewStack] 不允许 ABA: TestFullPanel 已在栈中，不能重复 Push");
-            await _stack.Push(_panel1);    // ABA 报错
+            LogAssert.Expect(LogType.Error, "[ViewStack] ABA rejected: TestFullPanel is already in the stack.");
+            await _stack.Push(_panel1);
 
-            Assert.AreEqual(3, _stack.Count, "ABA 深层嵌套被拒绝，栈应保持 3 个 entry");
-            Assert.AreSame(panelC, _stack.Peek(), "栈顶仍为 C");
+            Assert.AreEqual(3, _stack.Count, "ABA deep nesting rejected, stack should still have 3 entries");
+            Assert.AreSame(panelC, _stack.Peek());
 
             Object.DestroyImmediate(goB);
             Object.DestroyImmediate(goC);
         });
 
-        /// <summary>
-        /// Push null → 抛出 ArgumentNullException。
-        /// </summary>
         [UnityTest]
         public IEnumerator Push_Null_ThrowsArgumentNullException() => UniTask.ToCoroutine(async () =>
         {
             try
             {
                 await _stack.Push(null);
-                Assert.Fail("期望抛出 ArgumentNullException");
+                Assert.Fail("Expected ArgumentNullException");
             }
             catch (ArgumentNullException)
             {
-                Assert.AreEqual(0, _stack.Count, "null 不应入栈");
+                Assert.AreEqual(0, _stack.Count);
             }
         });
 
-        /// <summary>
-        /// 栈只剩一个 panel 时 Pop → 栈变空，panel 变为 Inactive，不调用 Resume。
-        /// </summary>
         [UnityTest]
         public IEnumerator Pop_SinglePanel_StackEmpties() => UniTask.ToCoroutine(async () =>
         {
@@ -226,12 +194,9 @@ namespace VoyageForge.UIKit.Tests
             Assert.AreEqual(0, _stack.Count);
             Assert.AreEqual(BasePanel.PanelState.Inactive, _panel1.State);
             Assert.AreEqual(1, _panel1.OnHideCount);
-            Assert.AreEqual(0, _panel1.OnResumeCount, "单个 panel Pop 后不应调用 Resume");
+            Assert.AreEqual(0, _panel1.OnResumeCount, "Single panel: Resume should not be called on Pop");
         });
 
-        /// <summary>
-        /// Pop → Pop 链式操作: A→B→C, Pop 两次 → 回到 A，B 和 C 都 Hide。
-        /// </summary>
         [UnityTest]
         public IEnumerator Pop_Pop_Chain_ResumesFirst() => UniTask.ToCoroutine(async () =>
         {
@@ -242,20 +207,20 @@ namespace VoyageForge.UIKit.Tests
             var panelC = goC.AddComponent<TestFullPanelB>();
             panelC.gameObject.SetActive(false);
 
-            await _stack.Push(_panel1);    // [A]
-            await _stack.Push(panelB);     // [A, B]
-            await _stack.Push(panelC);     // [A, B, C]
+            await _stack.Push(_panel1);
+            await _stack.Push(panelB);
+            await _stack.Push(panelC);
 
-            var poppedC = await _stack.Pop();  // [A, B]
-            var poppedB = await _stack.Pop();  // [A]
+            var poppedC = await _stack.Pop();
+            var poppedB = await _stack.Pop();
 
-            Assert.AreSame(panelC, poppedC, "第一次 Pop 返回 C");
-            Assert.AreSame(panelB, poppedB, "第二次 Pop 返回 B");
+            Assert.AreSame(panelC, poppedC);
+            Assert.AreSame(panelB, poppedB);
             Assert.AreEqual(1, _stack.Count);
-            Assert.AreSame(_panel1, _stack.Peek(), "栈顶回到 A");
-            Assert.AreEqual(BasePanel.PanelState.Active, _panel1.State, "A 应该被 Resume 到 Active");
-            Assert.AreEqual(BasePanel.PanelState.Inactive, panelB.State, "B 应 Inactive");
-            Assert.AreEqual(BasePanel.PanelState.Inactive, panelC.State, "C 应 Inactive");
+            Assert.AreSame(_panel1, _stack.Peek());
+            Assert.AreEqual(BasePanel.PanelState.Active, _panel1.State);
+            Assert.AreEqual(BasePanel.PanelState.Inactive, panelB.State);
+            Assert.AreEqual(BasePanel.PanelState.Inactive, panelC.State);
             Assert.AreEqual(1, _panel1.OnResumeCount);
             Assert.AreEqual(1, panelB.OnHideCount);
             Assert.AreEqual(1, panelC.OnHideCount);
@@ -264,9 +229,6 @@ namespace VoyageForge.UIKit.Tests
             Object.DestroyImmediate(goC);
         });
 
-        /// <summary>
-        /// 验证 TopPanelChanged 事件在 Push 时正确触发。
-        /// </summary>
         [UnityTest]
         public IEnumerator TopPanelChanged_FiresOnPush() => UniTask.ToCoroutine(async () =>
         {
@@ -275,29 +237,23 @@ namespace VoyageForge.UIKit.Tests
 
             await _stack.Push(_panel1);
 
-            Assert.AreSame(_panel1, receivedPanel, "TopPanelChanged 应收到 _panel1");
+            Assert.AreSame(_panel1, receivedPanel);
         });
 
-        /// <summary>
-        /// 验证 CountChanged 事件在 Push/Pop 时正确触发。
-        /// </summary>
         [UnityTest]
         public IEnumerator CountChanged_FiresOnPushPop() => UniTask.ToCoroutine(async () =>
         {
             var counts = new List<int>();
             _stack.CountChanged += c => counts.Add(c);
 
-            await _stack.Push(_panel1);          // count → 1
-            await _stack.Pop();                  // count → 0
+            await _stack.Push(_panel1);
+            await _stack.Pop();
 
             Assert.AreEqual(2, counts.Count);
-            Assert.AreEqual(1, counts[0], "Push 后 Count 应为 1");
-            Assert.AreEqual(0, counts[1], "Pop 后 Count 应为 0");
+            Assert.AreEqual(1, counts[0]);
+            Assert.AreEqual(0, counts[1]);
         });
 
-        /// <summary>
-        /// 验证生命周期调用顺序: Push 时先 Pause 当前 → 再 Show 新面板。
-        /// </summary>
         [UnityTest]
         public IEnumerator LifecycleOrder_Push_PauseBeforeShow() => UniTask.ToCoroutine(async () =>
         {
@@ -308,43 +264,38 @@ namespace VoyageForge.UIKit.Tests
             await _stack.Push(_panel1);
             await _stack.Push(panelB);
 
-            // _panel1.CallOrder: OnCreate → OnShow → OnPause
             var pauseIdx = _panel1.CallOrder.IndexOf("OnPause");
             var showIdx = panelB.CallOrder.IndexOf("OnShow");
             var createIdx = panelB.CallOrder.IndexOf("OnCreate");
 
-            Assert.Greater(pauseIdx, -1, "_panel1 应有 OnPause 记录");
-            Assert.Greater(showIdx, -1, "panelB 应有 OnShow 记录");
-            Assert.Greater(createIdx, -1, "panelB 应有 OnCreate 记录");
-            // OnCreate 在 OnShow 之前（同一个 panel 内部顺序）
-            Assert.Less(createIdx, showIdx, "OnCreate 应在 OnShow 之前");
+            Assert.Greater(pauseIdx, -1);
+            Assert.Greater(showIdx, -1);
+            Assert.Greater(createIdx, -1);
+            Assert.Less(createIdx, showIdx, "OnCreate should fire before OnShow");
 
             Object.DestroyImmediate(goB);
         });
 
-        /// <summary>
-        /// 验证 Peek() 在 Push/Pop 操作中始终返回正确的栈顶。
-        /// </summary>
         [UnityTest]
         public IEnumerator Peek_ReturnsCorrectTop() => UniTask.ToCoroutine(async () =>
         {
-            Assert.IsNull(_stack.Peek(), "空栈 Peek 应返回 null");
+            Assert.IsNull(_stack.Peek());
 
             await _stack.Push(_panel1);
-            Assert.AreSame(_panel1, _stack.Peek(), "Push A 后栈顶为 A");
+            Assert.AreSame(_panel1, _stack.Peek());
 
             var goB = new GameObject("PanelB");
             var panelB = goB.AddComponent<TestFullPanelA>();
             panelB.gameObject.SetActive(false);
 
             await _stack.Push(panelB);
-            Assert.AreSame(panelB, _stack.Peek(), "Push B 后栈顶为 B");
+            Assert.AreSame(panelB, _stack.Peek());
 
             await _stack.Pop();
-            Assert.AreSame(_panel1, _stack.Peek(), "Pop B 后栈顶回到 A");
+            Assert.AreSame(_panel1, _stack.Peek());
 
             await _stack.Pop();
-            Assert.IsNull(_stack.Peek(), "Pop A 后栈空，Peek 返回 null");
+            Assert.IsNull(_stack.Peek());
 
             Object.DestroyImmediate(goB);
         });

@@ -9,8 +9,13 @@ using VoyageForge.UIKit.Runtime;
 
 namespace VoyageForge.UIKit.Editor
 {
+    /// <summary>
+    /// Panel Path 编辑器工具窗口。拖入 prefab，一键批量生成 [PanelPath("...")] 特性到对应的 Panel 类上。
+    /// 通过 VoyageForge > UIKit > Panel Path Window 菜单打开。
+    /// </summary>
     public class PanelPathWindow : EditorWindow
     {
+        /// <summary>拖入的 prefab 列表。</summary>
         [SerializeField] private List<GameObject> _prefabs = new();
         private SerializedObject _so;
         private Vector2 _scroll;
@@ -25,14 +30,15 @@ namespace VoyageForge.UIKit.Editor
             _so.Update();
             var entriesProp = _so.FindProperty("_prefabs");
 
-            EditorGUILayout.PropertyField(entriesProp, new GUIContent("Prefab 列表"), true);
+            EditorGUILayout.PropertyField(entriesProp, new GUIContent("Prefabs"), true);
             _so.ApplyModifiedProperties();
 
             EditorGUILayout.Space();
-            if (GUILayout.Button("全部应用 [PanelPath]", GUILayout.Height(30)))
+            if (GUILayout.Button("Apply [PanelPath] to All", GUILayout.Height(30)))
                 ApplyAll();
         }
 
+        /// <summary>对所有 prefab 执行 PanelPath 特性写入。</summary>
         private void ApplyAll()
         {
             foreach (var prefab in _prefabs)
@@ -49,11 +55,16 @@ namespace VoyageForge.UIKit.Editor
             Repaint();
         }
 
+        /// <summary>获取 prefab 的 Asset 路径（去除扩展名）。</summary>
         private static string GetPath(GameObject prefab)
         {
             return Path.ChangeExtension(AssetDatabase.GetAssetPath(prefab), null);
         }
 
+        /// <summary>
+        /// 向指定类型的 .cs 源文件写入 [PanelPath] 特性。
+        /// 自动定位 class 声明行，在前面插入特性，已有的旧特性会被移除。
+        /// </summary>
         private static void WriteAttribute(System.Type type, string path)
         {
             var guids = AssetDatabase.FindAssets($"{type.Name} t:MonoScript");
@@ -75,6 +86,7 @@ namespace VoyageForge.UIKit.Editor
             if (content.Contains(attr)) return;
 
             var lines = new List<string>(content.Split('\n'));
+            // 移除已有的旧 PanelPath 特性
             lines.RemoveAll(l => l.TrimStart().StartsWith("[PanelPath("));
             for (int i = 0; i < lines.Count; i++)
             {
@@ -85,7 +97,7 @@ namespace VoyageForge.UIKit.Editor
             }
 
             File.WriteAllText(scriptPath, string.Join("\n", lines));
-            Debug.Log($"[UIKit] PanelPath: {type.Name} → {path}");
+            Debug.Log($"[UIKit] PanelPath: {type.Name} -> {path}");
         }
     }
 }
