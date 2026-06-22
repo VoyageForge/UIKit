@@ -1,7 +1,0 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
-    <Style src="project://database/Assets/Test/PrefabItem.uss?fileID=7433441132597879392&amp;guid=17db160ccbea4f6fbf366f0a728179a5&amp;type=3#PrefabItem" />
-    <ui:VisualElement class="prefab-item">
-        <ui:Image name="item-icon" class="item-icon" />
-        <ui:Label name="item-name" class="item-name" />
-    </ui:VisualElement>
-</ui:UXML>
